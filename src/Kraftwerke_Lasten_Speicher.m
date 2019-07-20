@@ -40,24 +40,27 @@ classdef Kraftwerke_Lasten_Speicher
              obj.b_N = bN;
              obj.n_N = nN;
              obj.o_MK = oMK;
-             obj.o_NB = oNB;
-
-
-            if obj.o_NP == 1
-             obj.P_N       
-            end  
-            
-            %      if obj.o_MK == 1
-              % ???       
-            % end          
-            if obj.o_NB == 1
-             obj.B_N       
-            end   
+             obj.o_NB = oNB;  
         end
 		
-		function [result] = keineAhnung ()	
-			%do something
-			%result = fancyMaths     => Return value	
-        end   
+         function result =  Nennleistung_min(obj)
+            result = obj.P_N*obj.x_Nmin;
+         end   
+         function result =  Nennleistung_max(obj)
+            result = obj.P_N*obj.x_Nmax;
+         end   
+         function result =  Leistung_aktuell(obj)
+            result = obj.P_N*obj.x_N;
+         end 
+         function result =  gestoert(obj)
+            result = false;
+            
+            if (obj.x_N < obj.x_Nmin) || (obj.x_N > obj.x_Nmax)
+                result = true;
+            end
+            
+            
+            %hier kann man alle möglichen Störfälle einbauen
+         end 
     end    
 end
