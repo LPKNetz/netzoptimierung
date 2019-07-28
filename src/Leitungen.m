@@ -29,10 +29,37 @@ classdef Leitungen
             if obj.o_PL == 1
              obj.P_L;                 % erstelle Variable "Bemessungsleistung" 
             end             
+          
+            
         end
-		function [result] =  keineAhnung()
-			%do something
-			%result = fancyMaths     => Return value
-        end
+             function result =  Transportleistung(obj)
+                result = obj.p_L*obj.P_L;
+             end   
+             function result =  Bemessungsleistung_gesamt(obj)
+                result = 1*obj.P_L;
+             end  
+             function result =  gestoert(obj)
+                result = false;
+
+                if (obj.p_L*obj.P_L < -obj.P_L) || (obj.p_L*obj.P_L > obj.P_L)
+                    result = true;
+                end
+
+
+                %hier kann man alle möglichen Störfälle einbauen
+             end
+         %    function result = Transportleistung_min(obj)
+        %        result = obj.P_N*obj.x_N;
+         %    end 
+         %    function result =  gestoert(obj)
+         %       result = false;
+            
+         %   if (obj.x_N < obj.x_Nmin) || (obj.x_N > obj.x_Nmax)
+         %       result = true;
+         %   end
+            
+            
+            %hier kann man alle möglichen Störfälle einbauen
+        % end 
     end   
 end
