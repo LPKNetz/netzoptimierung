@@ -43,7 +43,7 @@ for i=1:m
 end
 clear i
 clear m
-clear Leitungsmatrix
+%clear Leitungsmatrix
 
 %% 3. Kraftwerke_Lasten_Speicher
 Kraftwerksmatrix = readmatrix('../data/Kraftwerke_Lasten_Speichertabelle.xlsx');
@@ -68,9 +68,60 @@ Kraftwerksliste(i)=Kraftwerke_Lasten_Speicher  (Kraftwerksmatrix(i,1),... % Numb
 end
 clear i
 clear m
-clear Kraftwerksmatrix
+%clear Kraftwerksmatrix
 
-%% 4. Aufruf und Print
+
+%% 4. Netztabellen einlesen, Netzmatrizen erstellen, aktuellen Leitungsfluss berechnen:
+
+% Netzmatrix_Leitungen erstellen:
+Start_End_Knoten_matrix=Leitungsmatrix(:,2:3);
+[a,b] = size(Start_End_Knoten_matrix);  % a = Anzahl Leitungen 
+Netzmatrix_Leitungen = zeros(a+1,a);  % leere Matrix erstellen
+for i=1:a; 
+    s = Start_End_Knoten_matrix(i,1);
+    e = Start_End_Knoten_matrix(i,2);
+    Netzmatrix_Leitungen(s,i)= 1;
+    Netzmatrix_Leitungen(e,i)= -1;
+    clear s
+    clear e
+end         % leere Matrix befüllen
+
+
+% Leistungsvektor erstellen:
+% = Vektor mit Summe aus allen an ihm liegenden (aktuellen Leistungen*Nennleistung) als Eintrag und jeder Zeile entspricht einem Knoten
+% hier muss man aus den aktuellen Kraftwerks-Klassen-Objekten das x_N und
+% das P_N rauslesen, miteinander multiplizieren und alle an einem
+% bestimmten Knoten liegenden Leistungen aufsummieren. Diesen Wert dann
+% abspeichern. Er wird dann in den Leistungsvektor in die Knotenzeile
+% geschrieben.
+% Vorerst wird der Leistungsvektor nur mit der Kraftwerkstabelle gespeist
+% und noch nicht über die Inhalte der Objekte.
+G=Kraftwerksmatrix(:,2);
+H=Kraftwerksmatrix(:,5);
+I=G.*H;
+Leistungsvektor=[I];
+
+
+%Aktuellen Leitungsfluss berechnen:
+fprintf('Aktueller Leitungsfluss in kW:')
+fprintf('\n')
+Aktueller_Leitungsfluss = linsolve(Netzmatrix_Leitungen,Leistungsvektor)
+
+
+
+
+clear a
+clear b
+clear z
+clear s
+clear r
+clear c
+clear I
+clear G
+clear H
+
+
+%% 5. Aufruf und Print
 %Anzahl geladener Einheiten:
 fprintf('           Daten laden...\n')
 fprintf('\n')
