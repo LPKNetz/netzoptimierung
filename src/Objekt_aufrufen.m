@@ -73,6 +73,13 @@ clear m
 
 %% 4. Netztabellen einlesen, Netzmatrizen erstellen, aktuellen Leitungsfluss berechnen:
 
+    % Comment zu 4. :
+    % hier muss noch aus den aktuellen Objekten der Klassen die Werte
+    % extrahiert und hier lokal abgespeichert (Netzmatrix_Leitungen, Leistungsvektor)
+    % werden, sodass diese für die Verwendung in der Berechnung am Ende von 4. zur Verfügung stehen.
+    % Folgendes holt sich die Werte direkt aus den Excel-Tabellen im Ornder.
+
+
 % Netzmatrix_Leitungen erstellen:
 Start_End_Knoten_matrix=Leitungsmatrix(:,2:3);
 [a,b] = size(Start_End_Knoten_matrix);  % a = Anzahl Leitungen 
@@ -89,7 +96,7 @@ end         % leere Matrix befüllen
 
 % Leistungsvektor erstellen:
 % = Vektor mit Summe aus allen an ihm liegenden (aktuellen Leistungen*Nennleistung) als Eintrag und jeder Zeile entspricht einem Knoten
-% hier muss man aus den aktuellen Kraftwerks-Klassen-Objekten das x_N und
+% hier muss man aus den aktuellen Kraftwerks-Klasse-Objekten das x_N und
 % das P_N rauslesen, miteinander multiplizieren und alle an einem
 % bestimmten Knoten liegenden Leistungen aufsummieren. Diesen Wert dann
 % abspeichern. Er wird dann in den Leistungsvektor in die Knotenzeile
@@ -103,13 +110,21 @@ Leistungsvektor=[I];
 
 
 %Aktuellen Leitungsfluss berechnen:
+Aktueller_Leitungsfluss = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
+
 fprintf('Aktueller Leitungsfluss in kW:')
 fprintf('\n')
-Aktueller_Leitungsfluss = linsolve(Netzmatrix_Leitungen,Leistungsvektor)
+fprintf('\n')
+PL = round(Aktueller_Leitungsfluss,0);
+A=[1:1:a];
+B = transpose(A);
+fprintf('Leitung %i: %4d kW\n', permute(cat(3,B,PL), [3 2 1]));
+fprintf('\n')
+fprintf('\n')
 
-
-
-
+clear A
+clear B
+clear PL
 clear a
 clear b
 clear z
