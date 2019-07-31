@@ -35,6 +35,18 @@ classdef Leitungen
              function result =  Transportleistung(obj)
                 result = obj.p_L*obj.P_L;
              end   
+             
+             
+             
+             function result =  Startknoten(obj)
+                result = obj.K_L1;
+             end  
+             function result =  Endknoten(obj)
+                result = obj.K_L2;
+             end   
+             
+             
+             
              function result =  Bemessungsleistung_gesamt(obj)
                 result = 1*obj.P_L;
              end  

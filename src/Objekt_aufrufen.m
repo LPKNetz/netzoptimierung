@@ -1,13 +1,12 @@
 clc, clear, close all
 %% 0. Arbeitstabelle einlesen, workingmatrix WM erstellen, WM in Arbeitstabelle speichern
-%Einlesen und Erstellen
-%WM = readmatrix('../data/arbeitstabelle.xlsx');   % WM = workingmatrix  ,,,  man könnte auch readtable() benutzen ! besser?
+        %Einlesen und Erstellen
+        %WM = readmatrix('../data/arbeitstabelle.xlsx');   % WM = workingmatrix  ,,,  man könnte auch readtable() benutzen ! besser?
+        %WM=2*WM; %zum Verändern für Speicher-Test
+        %Speichern
+        %writematrix(WM,'../data/arbeitstabelle.xlsx','Sheet',1,'Range','A2');   %bei 'A2:BT8' würde nur der Bereich von A2 nach rechts bis BT und nach unten bis Zeile 8 beschrieben werden
 
-%WM=2*WM; %zum Verändern für Speicher-Test
-
-%Speichern
-%writematrix(WM,'../data/arbeitstabelle.xlsx','Sheet',1,'Range','A2');   %bei 'A2:BT8' würde nur der Bereich von A2 nach rechts bis BT und nach unten bis Zeile 8 beschrieben werden
-
+        
 %% 1. Knoten-Objekte initialisieren:
 Knotenmatrix = readmatrix('../data/Knotentabelle.xlsx');
 [m,~] = size(Knotenmatrix); %debug output
@@ -25,9 +24,11 @@ clear i
 clear m
 clear Knotenmatrix
 
+
 %% 2. Leitungs-Objekte initialisieren:
 Leitungsmatrix = readmatrix('../data/Leitungstabelle.xlsx');
 [m,~] = size(Leitungsmatrix);
+l=m; % Anzahl Leitungen muss für Kapitel 4 übergeben werden, damit wir wissen wie viele es gibt
 global Leitungsliste
 Leitungsliste = Leitungen.empty;
 for i=1:m
@@ -43,7 +44,8 @@ for i=1:m
 end
 clear i
 clear m
-%clear Leitungsmatrix
+%clear Leitungsmatrix   NEGATIV ! wird in Kapitel 4 noch gebraucht
+
 
 %% 3. Kraftwerke_Lasten_Speicher
 Kraftwerksmatrix = readmatrix('../data/Kraftwerke_Lasten_Speichertabelle.xlsx');
@@ -68,20 +70,15 @@ Kraftwerksliste(i)=Kraftwerke_Lasten_Speicher  (Kraftwerksmatrix(i,1),... % Numb
 end
 clear i
 clear m
-%clear Kraftwerksmatrix
+clear Kraftwerksmatrix
 
 
 %% 4. Netztabellen einlesen, Netzmatrizen erstellen, aktuellen Leitungsfluss berechnen:
-
-    % Comment zu 4. :
-    % hier muss noch aus den aktuellen Objekten der Klassen die Werte
-    % extrahiert und hier lokal abgespeichert (Netzmatrix_Leitungen, Leistungsvektor)
-    % werden, sodass diese für die Verwendung in der Berechnung am Ende von 4. zur Verfügung stehen.
-    % Folgendes holt sich die Werte direkt aus den Excel-Tabellen im Ornder.
-
-
-% Netzmatrix_Leitungen erstellen:
-Start_End_Knoten_matrix=Leitungsmatrix(:,2:3);
+% Netzmatrix_Leitungen (=A im Sinne v. Ax=b) erstellen:
+for i=1:l   %Start_End_Knoten_matrix anhand der Leitungsliste und der Start-und Endknoten-Funktionen aus Klasse
+Start_End_Knoten_matrix(i,1)=Leitungsliste(1,i).Startknoten();
+Start_End_Knoten_matrix(i,2)=Leitungsliste(1,i).Endknoten();
+end
 [a,b] = size(Start_End_Knoten_matrix);  % a = Anzahl Leitungen 
 Netzmatrix_Leitungen = zeros(a+1,a);  % leere Matrix erstellen
 for i=1:a; 
@@ -92,48 +89,36 @@ for i=1:a;
     clear s
     clear e
 end         % leere Matrix befüllen
+Netzmatrix_Leitungen;  % zur Ausgabe als Überprüfung gedacht
+
 
 
 % Leistungsvektor erstellen:
-% = Vektor mit Summe aus allen an ihm liegenden (aktuellen Leistungen*Nennleistung) als Eintrag und jeder Zeile entspricht einem Knoten
-% hier muss man aus den aktuellen Kraftwerks-Klasse-Objekten das x_N und
-% das P_N rauslesen, miteinander multiplizieren und alle an einem
-% bestimmten Knoten liegenden Leistungen aufsummieren. Diesen Wert dann
-% abspeichern. Er wird dann in den Leistungsvektor in die Knotenzeile
-% geschrieben.
-% Vorerst wird der Leistungsvektor nur mit der Kraftwerkstabelle gespeist
-% und noch nicht über die Inhalte der Objekte.
-G=Kraftwerksmatrix(:,2);
-H=Kraftwerksmatrix(:,5);
-I=G.*H;
-Leistungsvektor=[I];
+for i=1:a+1;
+    Leistungsvektor(i,1)=Kraftwerksliste(1,i).Leistung_aktuell();
+end
+
 
 
 %Aktuellen Leitungsfluss berechnen:
 Aktueller_Leitungsfluss = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
 
-fprintf('Aktueller Leitungsfluss in kW:')
-fprintf('\n')
-fprintf('\n')
-PL = round(Aktueller_Leitungsfluss,0);
-A=[1:1:a];
-B = transpose(A);
-fprintf('Leitung %i: %4d kW\n', permute(cat(3,B,PL), [3 2 1]));
-fprintf('\n')
-fprintf('\n')
+        %fprintf('Aktueller Leitungsfluss in kW:')
+        %fprintf('\n')
+        %fprintf('\n')
+        %PL = round(Aktueller_Leitungsfluss,0);
+        %A=[1:1:a];
+        %B = transpose(A);
+        %fprintf('Leitung %i: %4d kW\n', permute(cat(3,B,PL), [3 2 1]));
+        %fprintf('\n')
+        %fprintf('\n')
 
-clear A
-clear B
-clear PL
-clear a
 clear b
 clear z
 clear s
 clear r
 clear c
-clear I
-clear G
-clear H
+clear Leitungsmatrix
 
 
 %% 5. Aufruf und Print
@@ -157,7 +142,9 @@ fprintf('\n')
 fprintf('\n')
 
 
+
 %  Berechnung Netzdaten:
+
 fprintf('           Berechne Netzdaten...\n')
 fprintf('\n')
 %Kraftwerke / Lasten / Speicher:
@@ -174,14 +161,13 @@ fprintf('Aktuelle Kraftwerksreserve: %i kW\n',Kraftwerksreserve_aktuell)
 fprintf('Nennleistung größte Einheit: %i kW\n',Nennleistung_groesste_Einheit)
 fprintf('Nennleistung zweitgrößte Einheit: %i kW\n',Nennleistung_zweitgroesste_Einheit)
 fprintf('\n')
-
 %Leitungen:
 fprintf('Leitungen:\n')
 fprintf('\n')
 fprintf('Maximal verfügbare Bemessungsleistung in beide Richtungen : %i kW\n',Bemessungsleistung_verfuegbar_max)
 fprintf('Aktuelle Leitungsleistung vorwärts: %i kW\n',Leitungsleistung_vorwaerts_aktuell)
 fprintf('Aktuelle Leitungsleistung rückwärts: %i kW\n',Leitungsleistung_rueckwaerts_aktuell)
-   %fprintf('Aktuelle Netzunterdeckung: %i kW\n',Netzunterdeckung_aktuell)
+   %?? fprintf('Aktuelle Netzunterdeckung: %i kW\n',Netzunterdeckung_aktuell)
 fprintf('Aktuelle Leitungsreserve vorwärts: %i kW\n',Leitungsreserve_vorwaerts_aktuell())
 fprintf('Aktuelle Leitungsreserve rückwärts: %i kW\n',Leitungsreserve_rueckwaerts_aktuell())
 fprintf('Bemessungsleistung größte Leitung: %i kW\n',Bemessungsleistung_groesste_Leitung)
@@ -190,7 +176,9 @@ fprintf('\n')
 fprintf('\n')
 
 
+
 %  Validierung Netzzustand:
+
 fprintf('           Validiere Netzzustand...\n')
 fprintf('\n')
 %Kraftwerke / Lasten / Speicher:
@@ -224,6 +212,70 @@ if Zweifachredundanz_Leitungen_ok()
 else
     fprintf('Zweifachredundanz Leitungen: NICHT OK\n')  
 end
+fprintf('\n')
+fprintf('\n')
+%Auslastung der Leitungen:
+fprintf('Auslastung der Leitungen:  \n')
+fprintf('\n')
+fprintf('LEITUNG:      ZUSTAND:      LEISTUNGSFLUSS:   \n')
+fprintf('\n')
+PL = round(Aktueller_Leitungsfluss,0);
+A=[1:1:a];
+B = transpose(A);
+M = ones([a,11]);
+for i=1:a   %Überlastungscheck durch Vergleich von PL(i) von der Liste mit Bemessungsleistung_gesamt (objekt) aus klasse
+if PL(i,1) <= Leitungsliste(1,i).Bemessungsleistung_gesamt
+M(i,1)=1;
+else M(i,1)=0;
+end
+end
+T=char(M);      
+for i=1:a     %Ausdrucken
+    if M(a,1) == 1
+    T(i,2) = 'O'; 
+    T(i,3) = 'K';
+    
+    else
+    T(i,2) = 'Ü';
+    T(i,3) = 'B';
+    T(i,4) = 'E';
+    T(i,5) = 'R';
+    T(i,6) = 'L';
+    T(i,7) = 'A';
+    T(i,8) = 'S';
+    T(i,9) = 'T';
+    T(i,10) = 'E';
+    T(i,11) = 'T';
+    end
+end
+for i=1:a     %Ausdrucken
+fprintf('Leitung ')
+fprintf('%d', B(i,1))
+fprintf(':       ')
+fprintf('%s', T(i,2:11))
+fprintf('           P =')
+
+fprintf('%4d', PL(i,1))
+fprintf(' kW')
+fprintf('\n')
+end 
+clear M
+clear T
+clear Status
+clear A
+clear B
+clear PL
+clear a
+clear i
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
 
 
 
@@ -435,6 +487,7 @@ function power = Leitungsleistung_rueckwaerts_aktuell()
     clear i
     clear n
 end
+
  %  !!  Netzunterdeckung  ??
 function power = Leitungsreserve_vorwaerts_aktuell()
     power = Bemessungsleistung_verfuegbar_max() - Leitungsleistung_vorwaerts_aktuell();
