@@ -229,9 +229,9 @@ M(i,1)=1;
 else M(i,1)=0;
 end
 end
-T=char(M);      
+T=char(M);    
 for i=1:a     %Ausdrucken
-    if M(a,1) == 1
+    if M(i,1) == 1
     T(i,2) = 'O'; 
     T(i,3) = 'K';
     
@@ -259,6 +259,8 @@ fprintf('%4d', PL(i,1))
 fprintf(' kW')
 fprintf('\n')
 end 
+
+
 clear M
 clear T
 clear Status
