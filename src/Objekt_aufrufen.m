@@ -217,7 +217,7 @@ fprintf('\n')
 %Auslastung der Leitungen:
 fprintf('Auslastung der Leitungen:  \n')
 fprintf('\n')
-fprintf('LEITUNG:      ZUSTAND:      LEISTUNGSFLUSS:   \n')
+fprintf('LEITUNG:      LEISTUNGSFLUSS:     ZUSTAND:\n')
 fprintf('\n')
 PL = round(Aktueller_Leitungsfluss,0);
 A=[1:1:a];
@@ -251,12 +251,11 @@ end
 for i=1:a     %Ausdrucken
 fprintf('Leitung ')
 fprintf('%d', B(i,1))
-fprintf(':       ')
-fprintf('%s', T(i,2:11))
-fprintf('           P =')
-
+fprintf(':      ')
+fprintf('P =')
 fprintf('%4d', PL(i,1))
 fprintf(' kW')
+fprintf('\t   %s', T(i,2:11))
 fprintf('\n')
 end 
 
