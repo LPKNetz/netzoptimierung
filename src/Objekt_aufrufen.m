@@ -28,7 +28,7 @@ clear Knotenmatrix
 %% 2. Leitungs-Objekte initialisieren:
 Leitungsmatrix = readmatrix('../data/Leitungstabelle.xlsx');
 [m,~] = size(Leitungsmatrix);
-l=m; % Anzahl Leitungen muss für Kapitel 4 übergeben werden, damit wir wissen wie viele es gibt
+
 global Leitungsliste
 Leitungsliste = Leitungen.empty;
 for i=1:m
@@ -37,10 +37,11 @@ for i=1:m
                                     Leitungsmatrix(i,3),...% kL2
                                     Leitungsmatrix(i,4),...% PL
                                     Leitungsmatrix(i,5),...% pL
-                                    Leitungsmatrix(i,6),...% CL
-                                    Leitungsmatrix(i,7),...% cL
-                                    Leitungsmatrix(i,8),...% oKL
-                                    Leitungsmatrix(i,9));  % oPL
+                                    Leitungsmatrix(i,6),...% RL
+                                    Leitungsmatrix(i,7),...% CL
+                                    Leitungsmatrix(i,8),...% cL
+                                    Leitungsmatrix(i,9),...% oKL  
+                                    Leitungsmatrix(i,10)); % oPL
 end
 clear i
 clear m
@@ -54,19 +55,20 @@ global Kraftwerksliste
 Kraftwerksliste = Kraftwerke_Lasten_Speicher.empty;
 for i=1:m  
 Kraftwerksliste(i)=Kraftwerke_Lasten_Speicher  (Kraftwerksmatrix(i,1),... % Number
-                                                Kraftwerksmatrix(i,2),... % PN
-                                                Kraftwerksmatrix(i,3),... % xNmin
-                                                Kraftwerksmatrix(i,4),... % xNmax
-                                                Kraftwerksmatrix(i,5),... % xN
-                                                Kraftwerksmatrix(i,6),... % RN
-                                                Kraftwerksmatrix(i,7),... % CN
-                                                Kraftwerksmatrix(i,8),... % cN
-                                                Kraftwerksmatrix(i,9),... % oNP
-                                                Kraftwerksmatrix(i,10),...% BN
-                                                Kraftwerksmatrix(i,11),...% bN
-                                                Kraftwerksmatrix(i,12),...% nN
-                                                Kraftwerksmatrix(i,13),...% oMK
-                                                Kraftwerksmatrix(i,14));  % oNB
+                                                Kraftwerksmatrix(i,2),... % K    
+                                                Kraftwerksmatrix(i,3),... % PN
+                                                Kraftwerksmatrix(i,4),... % xNmin
+                                                Kraftwerksmatrix(i,5),... % xNmax
+                                                Kraftwerksmatrix(i,6),... % xN
+                                                Kraftwerksmatrix(i,7),... % RN
+                                                Kraftwerksmatrix(i,8),... % CN
+                                                Kraftwerksmatrix(i,9),... % cN
+                                                Kraftwerksmatrix(i,10),... % oNP
+                                                Kraftwerksmatrix(i,11),...% BN
+                                                Kraftwerksmatrix(i,12),...% bN
+                                                Kraftwerksmatrix(i,13),...% nN
+                                                Kraftwerksmatrix(i,14),...% oMK
+                                                Kraftwerksmatrix(i,15));  % oNB
 end
 clear i
 clear m
@@ -75,33 +77,119 @@ clear Kraftwerksmatrix
 
 %% 4. Netztabellen einlesen, Netzmatrizen erstellen, aktuellen Leitungsfluss berechnen:
 % Netzmatrix_Leitungen (=A im Sinne v. Ax=b) erstellen:
-for i=1:l   %Start_End_Knoten_matrix anhand der Leitungsliste und der Start-und Endknoten-Funktionen aus Klasse
-Start_End_Knoten_matrix(i,1)=Leitungsliste(1,i).Startknoten();
-Start_End_Knoten_matrix(i,2)=Leitungsliste(1,i).Endknoten();
+
+k=length(Knotenliste);
+l=length(Leitungsliste);
+for i=1:k   %Netzmatrix_Leitungen erstellen
+    for j=1:k
+        if i == j
+            G_Summe=0;
+            for m=1:l
+                Leitung=Leitungsliste(1,m);
+                R=Leitung.Leitungswiderstand();
+                G=1/R;
+                if Leitung.Startknoten() == i || Leitung.Endknoten() == i
+                    G_Summe=G_Summe+G;
+                end
+            end
+            Netzmatrix_Leitungen(i,j)=G_Summe;
+            
+        else
+            G_Summe=0;
+            for m=1:l
+                Leitung=Leitungsliste(1,m);
+                R=Leitung.Leitungswiderstand();
+                G=1/R;
+                if (Leitung.Startknoten() == i && Leitung.Endknoten() == j)||...
+                        (Leitung.Startknoten() == j && Leitung.Endknoten() == i)
+                    G_Summe=G_Summe+G;
+                end
+            end
+            Netzmatrix_Leitungen(i,j)=-G_Summe;  
+        end
+        
+        
+        %Netzmatrix_Leitungen(i,j)= 1/Leitungsliste(1,i).Leitungswiderstand();
+       
+    end
 end
-[a,b] = size(Start_End_Knoten_matrix);  % a = Anzahl Leitungen 
-Netzmatrix_Leitungen = zeros(a+1,a);  % leere Matrix erstellen
-for i=1:a; 
-    s = Start_End_Knoten_matrix(i,1);
-    e = Start_End_Knoten_matrix(i,2);
-    Netzmatrix_Leitungen(s,i)= 1;
-    Netzmatrix_Leitungen(e,i)= -1;
-    clear s
-    clear e
-end         % leere Matrix befüllen
-Netzmatrix_Leitungen;  % zur Ausgabe als Überprüfung gedacht
-
-
+clear G_Summe
+clear i
+clear j
+clear k
+clear l
+clear m
+clear R
 
 % Leistungsvektor erstellen:
-for i=1:a+1;
-    Leistungsvektor(i,1)=Kraftwerksliste(1,i).Leistung_aktuell();
+k=length(Knotenliste);
+n=length(Kraftwerksliste);
+for i=1:k  
+    P_Summe=0;
+    for j=1:n
+        Kraftwerk = Kraftwerksliste(1,i);
+        if Kraftwerk.Netzverknuepfungspunkt() == j 
+            P_Summe=P_Summe+Kraftwerk.Leistung_aktuell();
+        end
+    end
+    Leistungsvektor(i,1)=P_Summe;
+end
+clear i
+clear k
+clear j
+clear n
+clear P_Summe
+
+%Potentialvektor erstellen:
+Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor)
+
+%
+l=length(Leitungsliste);
+for i=1:l
+    Leitung=Leitungsliste(1,i);
+    R=Leitung.Leitungswiderstand();
+    s=Leitung.Startknoten();
+    e=Leitung.Endknoten();
+    Startpotential=Potentialvektor(s,1);
+    Endpotential=Potentialvektor(e,1);
+    Potentialdifferenz=Startpotential-Endpotential;
+    p=Potentialdifferenz/R;
+    Leitung.Aktuelle_Leistung_setzen_in_kW(p);
+fprintf('Leistung über Leitung %i:  %8.0f kW\n',i,p)
 end
 
 
 
+
+%Widerstandsmatrix erstellen:
+
+
+%PotDiffMatrix erstellen:
+for i=1:a+1
+
+    for j=1:a+1
+        M(i,j)=abs(test(i,1)-test(j,1));
+    end
+    M(i,i)=0;
+end
+
+
+%Produkt aus PotDiffMatrix und Widerstandsmatrix
+%for i=1:a+1
+%    for j=1:a+1
+%        P(i,j)=M(i,j)*;
+%    end
+%    P(i,i)=0;
+%end
+
+
+%Widerstandsvektor2
+%PotDiffVektor=M*Widerstandsvektor2
+
 %Aktuellen Leitungsfluss berechnen:
-Aktueller_Leitungsfluss = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
+%Aktueller_Leitungsfluss = PotDiffVektor.*Leistungsvektor;
+
+
 
         %fprintf('Aktueller Leitungsfluss in kW:')
         %fprintf('\n')
@@ -113,6 +201,7 @@ Aktueller_Leitungsfluss = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
         %fprintf('\n')
         %fprintf('\n')
 
+clear M
 clear b
 clear z
 clear s
@@ -251,9 +340,9 @@ end
 for i=1:a     %Ausdrucken
 fprintf('Leitung ')
 fprintf('%d', B(i,1))
-fprintf(':      ')
+fprintf(':    ')
 fprintf('P =')
-fprintf('%4d', PL(i,1))
+fprintf('%8d', PL(i,1))
 fprintf(' kW')
 fprintf('\t   %s', T(i,2:11))
 fprintf('\n')

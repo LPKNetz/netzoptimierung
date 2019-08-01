@@ -1,6 +1,7 @@
 classdef Kraftwerke_Lasten_Speicher
     properties
-                N           % Nummer
+                N           % Nummer 
+                K           % Netzverknüpfungspunkt
                 P_N  		% Nennleistung [kW]          (const.)
                 x_Nmin  	% Min. Stellgröße [1]        x aus [-1;1]
                 x_Nmax  	% Max. Stellgröße [1]        x aus [-1;1]  ,  x_Nmax  >=  x_Nmin  
@@ -25,8 +26,9 @@ classdef Kraftwerke_Lasten_Speicher
     end
     
     methods (Access = public)
-        function obj = Kraftwerke_Lasten_Speicher (Number,PN,xNmin,xNmax,xN,RN,CN,cN,oNP,BN,bN,nN,oMK,oNB)
+        function obj = Kraftwerke_Lasten_Speicher (Number,k, PN,xNmin,xNmax,xN,RN,CN,cN,oNP,BN,bN,nN,oMK,oNB)
              obj.N = Number;
+             obj.K = k;
              obj.P_N = PN;            
              obj.x_Nmin = xNmin;  
              obj.x_Nmax = xNmax;  
@@ -51,7 +53,10 @@ classdef Kraftwerke_Lasten_Speicher
          end   
          function result =  Leistung_aktuell(obj)
             result = obj.P_N*obj.x_N;
-         end 
+         end
+         function result = Netzverknuepfungspunkt(obj)
+             result = obj.K;
+         end
          function result =  gestoert(obj)
             result = false;
             
