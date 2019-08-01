@@ -120,6 +120,7 @@ clear k
 clear l
 clear m
 clear R
+clear G
 
 % Leistungsvektor erstellen:
 k=length(Knotenliste);
@@ -139,11 +140,14 @@ clear k
 clear j
 clear n
 clear P_Summe
+clear Kraftwerk
 
 %Potentialvektor erstellen:
 Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor)
+clear Netzmatrix_Leitungen
+clear Leistungsvektor
 
-%
+%Lastfluss auf Leitungen berechnen:
 l=length(Leitungsliste);
 for i=1:l
     Leitung=Leitungsliste(1,i);
@@ -159,55 +163,25 @@ fprintf('Leistung über Leitung %i:  %8.0f kW\n',i,p)
 end
 
 
-
-
-%Widerstandsmatrix erstellen:
-
-
-%PotDiffMatrix erstellen:
-for i=1:a+1
-
-    for j=1:a+1
-        M(i,j)=abs(test(i,1)-test(j,1));
-    end
-    M(i,i)=0;
-end
-
-
-%Produkt aus PotDiffMatrix und Widerstandsmatrix
-%for i=1:a+1
-%    for j=1:a+1
-%        P(i,j)=M(i,j)*;
-%    end
-%    P(i,i)=0;
-%end
-
-
-%Widerstandsvektor2
-%PotDiffVektor=M*Widerstandsvektor2
-
-%Aktuellen Leitungsfluss berechnen:
-%Aktueller_Leitungsfluss = PotDiffVektor.*Leistungsvektor;
-
-
-
-        %fprintf('Aktueller Leitungsfluss in kW:')
-        %fprintf('\n')
-        %fprintf('\n')
-        %PL = round(Aktueller_Leitungsfluss,0);
-        %A=[1:1:a];
-        %B = transpose(A);
         %fprintf('Leitung %i: %4d kW\n', permute(cat(3,B,PL), [3 2 1]));
-        %fprintf('\n')
-        %fprintf('\n')
+
 
 clear M
 clear b
 clear z
 clear s
-clear r
+clear e
+clear R
+clear p
+clear Leitung
+clear l
 clear c
 clear Leitungsmatrix
+clear i
+clear Startpotential
+clear Endpotential
+clear Potentialvektor
+clear Potentialdifferenz
 
 
 %% 5. Aufruf und Print
@@ -303,60 +277,7 @@ else
 end
 fprintf('\n')
 fprintf('\n')
-%Auslastung der Leitungen:
-fprintf('Auslastung der Leitungen:  \n')
-fprintf('\n')
-fprintf('LEITUNG:      LEISTUNGSFLUSS:     ZUSTAND:\n')
-fprintf('\n')
-PL = round(Aktueller_Leitungsfluss,0);
-A=[1:1:a];
-B = transpose(A);
-M = ones([a,11]);
-for i=1:a   %Überlastungscheck durch Vergleich von PL(i) von der Liste mit Bemessungsleistung_gesamt (objekt) aus klasse
-if PL(i,1) <= Leitungsliste(1,i).Bemessungsleistung_gesamt
-M(i,1)=1;
-else M(i,1)=0;
-end
-end
-T=char(M);    
-for i=1:a     %Ausdrucken
-    if M(i,1) == 1
-    T(i,2) = 'O'; 
-    T(i,3) = 'K';
-    
-    else
-    T(i,2) = 'Ü';
-    T(i,3) = 'B';
-    T(i,4) = 'E';
-    T(i,5) = 'R';
-    T(i,6) = 'L';
-    T(i,7) = 'A';
-    T(i,8) = 'S';
-    T(i,9) = 'T';
-    T(i,10) = 'E';
-    T(i,11) = 'T';
-    end
-end
-for i=1:a     %Ausdrucken
-fprintf('Leitung ')
-fprintf('%d', B(i,1))
-fprintf(':    ')
-fprintf('P =')
-fprintf('%8d', PL(i,1))
-fprintf(' kW')
-fprintf('\t   %s', T(i,2:11))
-fprintf('\n')
-end 
 
-
-clear M
-clear T
-clear Status
-clear A
-clear B
-clear PL
-clear a
-clear i
 
 
 
