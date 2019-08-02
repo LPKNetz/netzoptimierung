@@ -1,11 +1,18 @@
-clc, clear, close all
-%% 0. Arbeitstabelle einlesen, workingmatrix WM erstellen, WM in Arbeitstabelle speichern
-        %Einlesen und Erstellen
-        %WM = readmatrix('../data/arbeitstabelle.xlsx');   % WM = workingmatrix  ,,,  man könnte auch readtable() benutzen ! besser?
-        %WM=2*WM; %zum Verändern für Speicher-Test
-        %Speichern
-        %writematrix(WM,'../data/arbeitstabelle.xlsx','Sheet',1,'Range','A2');   %bei 'A2:BT8' würde nur der Bereich von A2 nach rechts bis BT und nach unten bis Zeile 8 beschrieben werden
+clc, clear, close all 
+feature('DefaultCharacterSet','UTF-8');
+%% 0. Logfile anlegen:
+Logfile=fopen('../log/Logfile.txt', 'w');
+if Logfile == -1
+  error('Cannot open log file.');
+end
+%fprintf(Logfile, '%s: %s\n', datestr(now, 0), test);
 
+
+
+% Folgende Zeile auskommentieren um auf die Konsole zu schreiben statt in
+% das Logfile:
+
+%Logfile=1; 
         
 %% 1. Knoten-Objekte initialisieren:
 Knotenmatrix = readmatrix('../data/Knotentabelle.xlsx');
@@ -143,7 +150,7 @@ clear P_Summe
 clear Kraftwerk
 
 %Potentialvektor erstellen:
-Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor)
+Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
 clear Netzmatrix_Leitungen
 clear Leistungsvektor
 
@@ -159,7 +166,7 @@ for i=1:l
     Potentialdifferenz=Startpotential-Endpotential;
     p=Potentialdifferenz/R;
     Leitung.Aktuelle_Leistung_setzen_in_kW(p);
-fprintf('Leistung über Leitung %i:  %8.0f kW\n',i,p)
+%fprintf(Logfile, 'Leistung ueber Leitung %i:  %8.0f kW\n',i,p)
 end
 
 
@@ -186,103 +193,106 @@ clear Potentialdifferenz
 
 %% 5. Aufruf und Print
 %Anzahl geladener Einheiten:
-fprintf('           Daten laden...\n')
-fprintf('\n')
+fprintf(Logfile, '           Daten laden...\n');
+fprintf(Logfile, '\n');
 
 [~,b]=size(Knotenliste);
-fprintf('%i Knoten geladen\n',b) 
+fprintf(Logfile, '%i Knoten geladen\n',b); 
 clear b
 
 [~,b]=size(Leitungsliste);
-fprintf('%i Leitungen geladen\n',b) 
+fprintf(Logfile, '%i Leitungen geladen\n',b); 
 clear b
 
 [~,b]=size(Kraftwerksliste);
-fprintf('%i Kraftwerke geladen\n',b) 
+fprintf(Logfile, '%i Kraftwerke geladen\n',b); 
 clear b
 
-fprintf('\n')
-fprintf('\n')
+fprintf(Logfile, '\n');
+fprintf(Logfile, '\n');
 
 
 
 %  Berechnung Netzdaten:
 
-fprintf('           Berechne Netzdaten...\n')
-fprintf('\n')
+fprintf(Logfile, '           Berechne Netzdaten...\n');
+fprintf(Logfile, '\n');
 %Kraftwerke / Lasten / Speicher:
-fprintf('Kraftwerke / Lasten / Speicher:\n')
-fprintf('\n')
-fprintf('Maximal verfügbare Netzeinspeiseleistung: %i kW\n',Netzeinspeiseleistung_verfuegbar_max) 
-fprintf('Minimal verfügbare Netzeinspeiseleistung: %i kW\n',Netzeinspeiseleistung_verfuegbar_min)
-fprintf('Maximal verfügbare Netzausspeiseleistung: %i kW\n',Netzausspeiseleistung_verfuegbar_max)
-fprintf('Minimal verfügbare Netzausspeiseleistung: %i kW\n',Netzausspeiseleistung_verfuegbar_min)
-fprintf('Aktuelle Netzeinspeiseleistung: %i kW\n',Netzeinspeiseleistung_aktuell)
-fprintf('Aktuelle Netzausspeiseleistung: %i kW\n',Netzausspeiseleistung_aktuell)
-fprintf('Aktuelle Netzunterdeckung: %i kW\n',Netzunterdeckung_aktuell)
-fprintf('Aktuelle Kraftwerksreserve: %i kW\n',Kraftwerksreserve_aktuell)
-fprintf('Nennleistung größte Einheit: %i kW\n',Nennleistung_groesste_Einheit)
-fprintf('Nennleistung zweitgrößte Einheit: %i kW\n',Nennleistung_zweitgroesste_Einheit)
-fprintf('\n')
+fprintf(Logfile, 'Kraftwerke / Lasten / Speicher:\n');
+fprintf(Logfile, '\n');
+fprintf(Logfile, 'Maximal verfuegbare Netzeinspeiseleistung: %i kW\n',Netzeinspeiseleistung_verfuegbar_max); 
+fprintf(Logfile, 'Minimal verfuegbare Netzeinspeiseleistung: %i kW\n',Netzeinspeiseleistung_verfuegbar_min);
+fprintf(Logfile, 'Maximal verfuegbare Netzausspeiseleistung: %i kW\n',Netzausspeiseleistung_verfuegbar_max);
+fprintf(Logfile, 'Minimal verfuegbare Netzausspeiseleistung: %i kW\n',Netzausspeiseleistung_verfuegbar_min);
+fprintf(Logfile, 'Aktuelle Netzeinspeiseleistung: %i kW\n',Netzeinspeiseleistung_aktuell);
+fprintf(Logfile, 'Aktuelle Netzausspeiseleistung: %i kW\n',Netzausspeiseleistung_aktuell);
+fprintf(Logfile, 'Aktuelle Netzunterdeckung: %i kW\n',Netzunterdeckung_aktuell);
+fprintf(Logfile, 'Aktuelle Kraftwerksreserve: %i kW\n',Kraftwerksreserve_aktuell);
+fprintf(Logfile, 'Nennleistung groesste Einheit: %i kW\n',Nennleistung_groesste_Einheit);
+fprintf(Logfile, 'Nennleistung zweitgroesste Einheit: %i kW\n',Nennleistung_zweitgroesste_Einheit);
+fprintf(Logfile, '\n');
 %Leitungen:
-fprintf('Leitungen:\n')
-fprintf('\n')
-fprintf('Maximal verfügbare Bemessungsleistung in beide Richtungen : %i kW\n',Bemessungsleistung_verfuegbar_max)
-fprintf('Aktuelle Leitungsleistung vorwärts: %i kW\n',Leitungsleistung_vorwaerts_aktuell)
-fprintf('Aktuelle Leitungsleistung rückwärts: %i kW\n',Leitungsleistung_rueckwaerts_aktuell)
-   %?? fprintf('Aktuelle Netzunterdeckung: %i kW\n',Netzunterdeckung_aktuell)
-fprintf('Aktuelle Leitungsreserve vorwärts: %i kW\n',Leitungsreserve_vorwaerts_aktuell())
-fprintf('Aktuelle Leitungsreserve rückwärts: %i kW\n',Leitungsreserve_rueckwaerts_aktuell())
-fprintf('Bemessungsleistung größte Leitung: %i kW\n',Bemessungsleistung_groesste_Leitung)
-fprintf('Bemessungsleistung zweitgrößte Leitung: %i kW\n',Bemessungsleistung_zweitgroesste_Leitung)
-fprintf('\n')
-fprintf('\n')
+fprintf(Logfile, 'Leitungen:\n');
+fprintf(Logfile, '\n');
+l=length(Leitungsliste);
+for i=1:l
+    Leitung=Leitungsliste(1,i);
+    p=Leitung.Transportleistung();
+fprintf(Logfile, 'Leistung ueber Leitung %i:  %8.0f kW\n',i,p);
+end
+fprintf(Logfile, '\n');
+clear p
+clear l
+clear i
+clear Leitung
+fprintf(Logfile, 'Maximal verfuegbare Bemessungsleistung in beide Richtungen : %i kW\n',Leitungen_Bemessungsleistung_verfuegbar_max);
+fprintf(Logfile, 'Aktuelle Leitungsleistung vorwaerts: %i kW\n',Leitungsleistung_vorwaerts_aktuell);
+fprintf(Logfile, 'Aktuelle Leitungsleistung rueckwaerts: %i kW\n',Leitungsleistung_rueckwaerts_aktuell);
+   %?? fprintf(Logfile, 'Aktuelle Netzunterdeckung: %i kW\n',Netzunterdeckung_aktuell);
+%fprintf(Logfile, 'Aktuelle Leitungsreserve vorwaerts: %i kW\n',Leitungsreserve_vorwaerts_aktuell());
+%fprintf(Logfile, 'Aktuelle Leitungsreserve rueckwaerts: %i kW\n',Leitungsreserve_rueckwaerts_aktuell());
+fprintf(Logfile, 'Bemessungsleistung groesste Leitung: %i kW\n',Bemessungsleistung_groesste_Leitung);
+fprintf(Logfile, 'Bemessungsleistung zweitgroesste Leitung: %i kW\n',Bemessungsleistung_zweitgroesste_Leitung);
+fprintf(Logfile, '\n');
+fprintf(Logfile, '\n');
 
 
 
 %  Validierung Netzzustand:
 
-fprintf('           Validiere Netzzustand...\n')
-fprintf('\n')
+fprintf(Logfile, '           Validiere Netzzustand...\n');
+fprintf(Logfile, '\n');
 %Kraftwerke / Lasten / Speicher:
-fprintf('Kraftwerke / Lasten / Speicher:\n')
-fprintf('\n')
-fprintf('Anzahl Einheiten nicht im Regelbereich: %i \n',Anzahl_Kraftwerks_und_Last_Stoerfaelle())
-fprintf('Summe Nennleistung nicht im Regelbereich: %i kW\n',Nennleistung_Kraftwerks_und_Last_Stoerfaelle())
+fprintf(Logfile, 'Kraftwerke / Lasten / Speicher:\n');
+fprintf(Logfile, '\n');
+fprintf(Logfile, 'Anzahl Einheiten nicht im Regelbereich: %i \n',Anzahl_Kraftwerks_und_Last_Stoerfaelle());
+fprintf(Logfile, 'Summe Nennleistung nicht im Regelbereich: %i kW\n',Nennleistung_Kraftwerks_und_Last_Stoerfaelle());
 if Einfachredundanz_Kraftwerke_ok()
-    fprintf('Einfachredundanz Kraftwerke: OK\n')
+    fprintf(Logfile, 'Einfachredundanz Kraftwerke: OK\n');
 else
-    fprintf('Einfachredundanz Kraftwerke: NICHT OK\n')  
+    fprintf(Logfile, 'Einfachredundanz Kraftwerke: NICHT OK\n');  
 end
 if Zweifachredundanz_Kraftwerke_ok()
-    fprintf('Zweifachredundanz Kraftwerke: OK\n')
+    fprintf(Logfile, 'Zweifachredundanz Kraftwerke: OK\n');
 else
-    fprintf('Zweifachredundanz Kraftwerke: NICHT OK\n')  
+    fprintf(Logfile, 'Zweifachredundanz Kraftwerke: NICHT OK\n');  
 end
-fprintf('\n')
+fprintf(Logfile, '\n');
 %Leitungen:
-fprintf('Leitungen:\n')
-fprintf('\n')
-fprintf('Anzahl Leitungen nicht im Regelbereich: %i \n',Anzahl_Leitungs_Stoerfaelle())
-fprintf('Summe Bemessungsleistung nicht im Regelbereich: %i kW\n',Bemessungsleistung_Leitungs_Stoerfaelle())
-if Einfachredundanz_Leitungen_ok()
-    fprintf('Einfachredundanz Leitungen: OK\n')
-else
-    fprintf('Einfachredundanz Leitungen: NICHT OK\n')  
+fprintf(Logfile, 'Leitungen:\n');
+fprintf(Logfile, '\n');
+fprintf(Logfile, 'Anzahl Leitungen nicht im Arbeitsbereich: %i \n',Anzahl_Leitungs_Stoerfaelle());
+fprintf(Logfile, 'Summe Bemessungsleistung nicht im Arbeitsbereich: %i kW\n',Bemessungsleistung_Leitungs_Stoerfaelle());
+fprintf(Logfile, '\n');
+fprintf(Logfile, '\n');
+
+
+
+
+
+if Logfile ~= 1
+    fclose(Logfile);
 end
-if Zweifachredundanz_Leitungen_ok()
-    fprintf('Zweifachredundanz Leitungen: OK\n')
-else
-    fprintf('Zweifachredundanz Leitungen: NICHT OK\n')  
-end
-fprintf('\n')
-fprintf('\n')
-
-
-
-
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -453,7 +463,7 @@ function ok = Zweifachredundanz_Kraftwerke_ok
 end
 
 %Leitungen
-function power = Bemessungsleistung_verfuegbar_max()
+function power = Leitungen_Bemessungsleistung_verfuegbar_max()
     global Leitungsliste
     [~,n]=size(Leitungsliste);
     power=0;
@@ -500,12 +510,7 @@ function power = Leitungsleistung_rueckwaerts_aktuell()
 end
 
  %  !!  Netzunterdeckung  ??
-function power = Leitungsreserve_vorwaerts_aktuell()
-    power = Bemessungsleistung_verfuegbar_max() - Leitungsleistung_vorwaerts_aktuell();
-end
-function power = Leitungsreserve_rueckwaerts_aktuell()
-    power = Bemessungsleistung_verfuegbar_max() + Leitungsleistung_rueckwaerts_aktuell();
-end
+
 function s = Anzahl_Leitungs_Stoerfaelle()
     global Leitungsliste
     [~,n]=size(Leitungsliste);
@@ -560,17 +565,4 @@ function pp = Bemessungsleistung_zweitgroesste_Leitung()
     clear i
     clear n
 end
-function ok = Einfachredundanz_Leitungen_ok
-   if (Leitungsreserve_vorwaerts_aktuell() > Bemessungsleistung_groesste_Leitung() && Leitungsreserve_rueckwaerts_aktuell() > Bemessungsleistung_groesste_Leitung())
-        ok = true;
-   else
-       ok = false;
-   end
-end
-function ok = Zweifachredundanz_Leitungen_ok
-   if Leitungsreserve_vorwaerts_aktuell() > (Bemessungsleistung_groesste_Leitung() + Bemessungsleistung_zweitgroesste_Leitung()) && Leitungsreserve_rueckwaerts_aktuell() > (Bemessungsleistung_groesste_Leitung() + Bemessungsleistung_zweitgroesste_Leitung())
-        ok = true;
-   else
-       ok = false;
-   end
-end
+
