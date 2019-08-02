@@ -23,49 +23,73 @@ classdef Kraftwerke_Lasten_Speicher
 
                 o_MK  		% Erlaube Vorgabe Netzverknüpfungspunkt  [bool]
                 o_NB  		% Erlaube Vorgabe Bunkergröße  [bool]
+                TQ          % Pfad Trendquelle (Kurven)
+                Trend       % Trend (=Windgeschwindigkeit oder Solare Strahlung oder hydro etc.)
     end
     
     methods (Access = public)
-        function obj = Kraftwerke_Lasten_Speicher (Number,k, PN,xNmin,xNmax,xN,RN,CN,cN,oNP,BN,bN,nN,oMK,oNB)
-             obj.N = Number;
-             obj.K = k;
-             obj.P_N = PN;            
-             obj.x_Nmin = xNmin;  
-             obj.x_Nmax = xNmax;  
-             obj.x_N = xN;
-             obj.R_N = RN; 		
-             obj.C_N = CN;
-             obj.c_N = cN;
-             obj.o_NP = oNP;
+        function obj = Kraftwerke_Lasten_Speicher (Number,k, PN,xNmin,xNmax,xN,RN,CN,cN,oNP,BN,bN,nN,oMK,oNB,tq)
+             obj.N = Number{1,1};
+             obj.K = k{1,1};
+             obj.P_N = PN{1,1};            
+             obj.x_Nmin = xNmin{1,1};  
+             obj.x_Nmax = xNmax{1,1};  
+             obj.x_N = xN{1,1};
+             obj.R_N = RN{1,1};	
+             obj.C_N = CN{1,1};
+             obj.c_N = cN{1,1};
+             obj.o_NP = oNP{1,1};
 
-             obj.B_N = BN;
-             obj.b_N = bN;
-             obj.n_N = nN;
-             obj.o_MK = oMK;
-             obj.o_NB = oNB;  
+             obj.B_N = BN{1,1};
+             obj.b_N = bN{1,1};
+             obj.n_N = nN{1,1};
+             obj.o_MK = oMK{1,1};
+             obj.o_NB = oNB{1,1};  
+             obj.TQ = tq{1,1};
+             
+             if obj.R_N == 3 || obj.R_N == 4
+                 obj.Trend_laden()
+             end
         end
-		
-         function result =  Nennleistung_min(obj)
-            result = obj.P_N*obj.x_Nmin;
-         end   
-         function result =  Nennleistung_max(obj)
-            result = obj.P_N*obj.x_Nmax;
-         end   
-         function result =  Leistung_aktuell(obj)
-            result = obj.P_N*obj.x_N;
-         end
-         function result = Netzverknuepfungspunkt(obj)
-             result = obj.K;
-         end
-         function result =  gestoert(obj)
-            result = false;
+        
+        
+        
+        function Trend_laden(obj)
+            %val = jsondecode(fileread(fullfile('../data/',obj.TQ{1,1})));
+            val = jsondecode(fileread('../data/weather/wind/Bremerhaven_Juli_2019.json'));
+            [m,~]=size(val.observations);
+            for i=1:m
+                dates(i)= val.observations(i).valid_time_gmt;
+                values(i) = val.observations(i).wspd;
+            end
+            obj.Trend = containers.Map(dates,values);
+            %view=obj.Trend('1')
             
+        end
+        
+        
+        
+        
+        function result =  Nennleistung_min(obj)
+            result = obj.P_N*obj.x_Nmin;
+        end   
+        function result =  Nennleistung_max(obj)
+            result = obj.P_N*obj.x_Nmax;
+        end   
+        function result =  Leistung_aktuell(obj)
+            result = obj.P_N*obj.x_N;
+        end
+        function result = Netzverknuepfungspunkt(obj)
+            result = obj.K;
+        end
+        function result =  gestoert(obj)
+            result = false;
             if (obj.x_N < obj.x_Nmin) || (obj.x_N > obj.x_Nmax)
                 result = true;
             end
-            
-            
-            %hier kann man alle möglichen Störfälle einbauen
-         end 
+
+
+        %hier kann man alle möglichen Störfälle einbauen
+        end 
     end    
 end

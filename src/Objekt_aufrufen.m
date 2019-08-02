@@ -56,7 +56,7 @@ clear m
 
 
 %% 3. Kraftwerke_Lasten_Speicher
-Kraftwerksmatrix = readmatrix('../data/Kraftwerke_Lasten_Speichertabelle.xlsx');
+Kraftwerksmatrix = readtable('../data/Kraftwerke_Lasten_Speichertabelle.xlsx');
 [m,~] = size(Kraftwerksmatrix);
 global Kraftwerksliste 
 Kraftwerksliste = Kraftwerke_Lasten_Speicher.empty;
@@ -75,7 +75,8 @@ Kraftwerksliste(i)=Kraftwerke_Lasten_Speicher  (Kraftwerksmatrix(i,1),... % Numb
                                                 Kraftwerksmatrix(i,12),...% bN
                                                 Kraftwerksmatrix(i,13),...% nN
                                                 Kraftwerksmatrix(i,14),...% oMK
-                                                Kraftwerksmatrix(i,15));  % oNB
+                                                Kraftwerksmatrix(i,15),...% oNB
+                                                Kraftwerksmatrix(i,16));  % TQ
 end
 clear i
 clear m
@@ -287,7 +288,12 @@ fprintf(Logfile, '\n');
 fprintf(Logfile, '\n');
 
 
+fname = '../data/weather/wind/Bremerhaven_Juli_2019.json';
+val = jsondecode(fileread(fname));
+val.observations(1).wspd
+time=val.observations(3).valid_time_gmt;
 
+y=datetime(time, 'convertfrom','posixtime')
 
 
 if Logfile ~= 1
