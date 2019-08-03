@@ -1,4 +1,4 @@
-classdef Leitungen 
+classdef Leitungen < handle
     properties
     L
     K_L1
@@ -34,8 +34,9 @@ classdef Leitungen
              function result =  Leitungswiderstand(obj)
                 result = obj.R_L;
              end
-             function Aktuelle_Leistung_setzen_in_kW(obj,p)
+             function result = Aktuelle_Leistung_setzen_in_kW(obj,p)
                  obj.p_L=p/obj.P_L;
+                 result = obj;
              end
              function result =  Startknoten(obj)
                 result = obj.K_L1;

@@ -1,4 +1,4 @@
-classdef Knoten 
+classdef Knoten < handle 
     
     properties
     K

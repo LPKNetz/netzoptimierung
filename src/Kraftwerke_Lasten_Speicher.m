@@ -1,4 +1,4 @@
-classdef Kraftwerke_Lasten_Speicher
+classdef Kraftwerke_Lasten_Speicher < handle
     properties
                 N           % Nummer 
                 K           % Netzverknüpfungspunkt
@@ -46,29 +46,44 @@ classdef Kraftwerke_Lasten_Speicher
              obj.o_MK = oMK{1,1};
              obj.o_NB = oNB{1,1};  
              obj.TQ = tq{1,1};
-             
+              
              if obj.R_N == 3 || obj.R_N == 4
-                 obj.Trend_laden()
+                 obj.Trend=obj.Trend_laden();
              end
         end
-        
-        
-        
-        function Trend_laden(obj)
-            %val = jsondecode(fileread(fullfile('../data/',obj.TQ{1,1})));
-            val = jsondecode(fileread('../data/weather/wind/Bremerhaven_Juli_2019.json'));
+        function result = Trend_laden(obj)
+            val = jsondecode(fileread(fullfile('../data/',obj.TQ{1,1})));
             [m,~]=size(val.observations);
+            C=zeros([m,2]);
             for i=1:m
-                dates(i)= val.observations(i).valid_time_gmt;
-                values(i) = val.observations(i).wspd;
+                C(i,1) = val.observations(i).valid_time_gmt;
+                C(i,2) = val.observations(i).wspd/25;     % teilen durch 25, da Volllast bei 25 km/h
+                result = C;
             end
-            obj.Trend = containers.Map(dates,values);
-            %view=obj.Trend('1')
+        end
+        function result = Zeit_setzen(obj,time)
+            [m,~]=size(obj.Trend);
+            for i=2:m
+                if obj.Trend(i,1) > time
+                    x = obj.Trend(i-1,2);
+                    obj.Sollwert_setzen(x);
+                    break
+                end
+            end
             
+            result = obj;
         end
         
-        
-        
+        function Sollwert_setzen(obj,x_N)
+            if x_N >= obj.x_Nmax
+                obj.x_N = obj.x_Nmax;
+            elseif x_N <= obj.x_Nmin
+                obj.x_N = obj.x_Nmin;
+            else
+                obj.x_N = x_N;
+            end
+            %result = obj;
+        end
         
         function result =  Nennleistung_min(obj)
             result = obj.P_N*obj.x_Nmin;

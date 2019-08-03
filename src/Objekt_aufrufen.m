@@ -290,10 +290,14 @@ fprintf(Logfile, '\n');
 
 fname = '../data/weather/wind/Bremerhaven_Juli_2019.json';
 val = jsondecode(fileread(fname));
-val.observations(1).wspd
+val.observations(1).wspd;
 time=val.observations(3).valid_time_gmt;
 
-y=datetime(time, 'convertfrom','posixtime')
+datetime(time, 'convertfrom','posixtime');
+
+Kraftwerksliste(1,10).Zeit_setzen(1562224805)
+
+
 
 
 if Logfile ~= 1
