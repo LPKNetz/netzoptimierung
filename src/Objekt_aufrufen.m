@@ -295,11 +295,56 @@ time=val.observations(3).valid_time_gmt;
 
 datetime(time, 'convertfrom','posixtime');
 
-Kraftwerksliste(1,10).Zeit_setzen(1562224805)
+%Kraftwerksliste(1,10).Zeit_setzen(1562224805)   % TEST
+
+
+%% 6. Time Sequencer
 
 
 
+%% 7. Grafik erstellen
 
+% Check version
+if verLessThan('matlab','8.6')
+    error('digraph is available in R2015b or newer.')
+end
+
+% Create a directed graph object using the digraph function
+[~,k]=size(Knotenliste);
+G = digraph();
+G = G.addnode(k);
+[~,l]=size(Leitungsliste);
+c=cell([l 1]);
+for i=1:l
+    Leitung=Leitungsliste(1,i);
+    p = Leitung.Transportleistung();
+
+    if (p >= 0)
+        s = Leitung.Startknoten();
+        e = Leitung.Endknoten();
+    else
+        s = Leitung.Endknoten();
+        e = Leitung.Startknoten();
+    end
+    
+    
+    c{i,1}=num2str(abs(p),'%6.0f kW');
+    G = addedge(G,s,e,round(abs(p)));
+    fprintf("Leitung %i: von %i nach %i: %6.0f kW\n", i, s, e, abs(p));
+end
+
+G.Edges
+%plot(G,'EdgeLabel',c)
+plot(G, 'EdgeLabel', G.Edges.Weight)
+
+% Visualize the graph
+%figure
+%plot(G,'EdgeLabel',G.Edges.Weight,'layout','layered')
+% Remove axes ticks
+%set(gca,'XTick',[],'YTick',[])
+% Add title
+%title('Leitungsfluss')
+%% Logfile schlieﬂen
 if Logfile ~= 1
     fclose(Logfile);
 end
@@ -310,7 +355,7 @@ end
 
 
 
-%Funktionen:
+%% Funktionen:
 
 %Kraftwerke / Lasten / Speicher:
 function power = Netzausspeiseleistung_verfuegbar_min()
