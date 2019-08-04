@@ -310,14 +310,23 @@ if verLessThan('matlab','8.6')
 end
 
 % Create a directed graph object using the digraph function
+hold on;
+axis ([30 60 20 30]);
+pbaspect([1 1 1])
+
 [~,k]=size(Knotenliste);
 G = digraph();
 G = G.addnode(k);
+
 [~,l]=size(Leitungsliste);
 c=cell([l 1]);
+title('Netzkarte');
+xlabel('Laengengrad [deg]') 
+ylabel('Breitengrad [deg]') 
 for i=1:l
     Leitung=Leitungsliste(1,i);
     p = Leitung.Transportleistung();
+    p_norm = Leitung.p_L;
 
     if (p >= 0)
         s = Leitung.Startknoten();
@@ -331,11 +340,44 @@ for i=1:l
     c{i,1}=num2str(abs(p),'%6.0f kW');
     G = addedge(G,s,e,round(abs(p)));
     fprintf("Leitung %i: von %i nach %i: %6.0f kW\n", i, s, e, abs(p));
+    
+    Startknoten = Knotenliste(1,s);
+    Endknoten = Knotenliste(1,e);
+    
+    LineColor = [.1 .2 1];
+    LineStyle = '-';
+    if (Leitung.gestoert())
+        LineColor = [1 .4 .4];
+        LineStyle = ':';
+    end
+    
+    plot([Startknoten.Long_K Endknoten.Long_K], [Startknoten.Lat_K Endknoten.Lat_K],...
+        '',...
+        'Color', LineColor, 'LineStyle', LineStyle, 'LineWidth', 0.5 + abs(p_norm));
+    Leitungstext = sprintf("L%i: %.0f kW\n", i, abs(p));
+    
+    Textwinkel = (atan(3*(Endknoten.Lat_K-Startknoten.Lat_K)/(Endknoten.Long_K-Startknoten.Long_K)))*360/2/3.1415;
+    text((Startknoten.Long_K + Endknoten.Long_K) / 2,...
+        (Startknoten.Lat_K + Endknoten.Lat_K) / 2, Leitungstext,...
+        'FontSize',10, 'Rotation', Textwinkel,...
+        'HorizontalAlignment', 'Center');
 end
 
-G.Edges
+for i=1:k
+    Knoten=Knotenliste(1,i);
+    Long = Knoten.Long_K;
+    Lat = Knoten.Lat_K;
+    plot(Long, Lat,...
+        '.', 'MarkerSize',20,'MarkerEdgeColor',[.2 .7 .6]);
+    Knotentext = sprintf("K%i", i);
+    text(Long + .5, Lat, Knotentext, 'FontSize',15, 'Color', [.2 .7 .6]);
+end
+
+hold off;
+
+%G.Edges
 %plot(G,'EdgeLabel',c)
-plot(G, 'EdgeLabel', G.Edges.Weight)
+%plot(G, 'EdgeLabel', G.Edges.Weight)
 
 % Visualize the graph
 %figure
