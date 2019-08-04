@@ -310,6 +310,7 @@ if verLessThan('matlab','8.6')
 end
 
 % Create a directed graph object using the digraph function
+figure('units','normalized','position',[0,0,1,1]);
 hold on;
 axis ([30 60 20 30]);
 pbaspect([1 1 1])
@@ -319,6 +320,7 @@ G = digraph();
 G = G.addnode(k);
 
 [~,l]=size(Leitungsliste);
+[~,m]=size(Kraftwerksliste);
 c=cell([l 1]);
 title('Netzkarte');
 xlabel('Laengengrad [deg]') 
@@ -373,6 +375,15 @@ for i=1:k
     text(Long + .5, Lat, Knotentext, 'FontSize',15, 'Color', [.2 .7 .6]);
 end
 
+for i=1:m
+    Kraftwerk=Kraftwerksliste(1,i);
+    k = Kraftwerk.K;
+    Knoten=Knotenliste(1,k);
+    x=Knoten.Long_K;
+    y=Knoten.Lat_K;
+    plotKraftwerk(x, y, Kraftwerk);
+end
+
 hold off;
 
 %G.Edges
@@ -398,6 +409,82 @@ end
 
 
 %% Funktionen:
+
+function plotKraftwerk(x, y, Kraftwerk)
+    n = Kraftwerk.N;
+    P = Kraftwerk.P_N;
+    p_norm = Kraftwerk.x_N;
+    Bunkergroesse = Kraftwerk.B_N;
+    p = Kraftwerk.Leistung_aktuell();
+    LineColor = [.4 .2 .10];
+    LineStyle = '-';
+    if (Kraftwerk.gestoert())
+        LineColor = [1 .4 .4];
+        LineStyle = ':';
+    elseif (p>0)
+        LineColor = [.24 .90 .0];
+    elseif (abs(p_norm) < 0.001)
+        LineColor = [.6 .6 .6];
+    end
+    
+    typ = "";
+    if (Bunkergroesse > 0.001) && (Kraftwerk.x_Nmin < -0.0001)  % Speicher
+        typ = "Speicher";
+    elseif (Kraftwerk.x_Nmin < -0.0001)  % Last
+        typ = "Last";
+    else    % Konventionelles Kraftwerk
+        typ = "Kraftwerk";
+    end
+    
+    y_offset = 0.3;
+    
+    switch (typ)
+        case "Speicher"
+            x_offset = 5*1.5;
+        case "Last"
+            x_offset = 2*1.5;
+        case "Kraftwerk"
+            x_offset = 0;
+        otherwise
+            x_offset = 0;
+    end
+    
+    % Anschlusslinie zum Netzverknüpfungspunkt
+    plot([x (x-x_offset) (x-x_offset)], [y (y-y_offset) (y-2*y_offset)],...
+        '',...
+        'Color', LineColor, 'LineStyle', LineStyle, 'LineWidth', 0.5 + abs(p_norm));
+    
+    % Box für Bargraph
+    plot([(x-x_offset + 0.5) (x-x_offset + 0.5)], [(y-2*y_offset - 1.2) (y-2*y_offset - 1.2 + 1.0)],...
+        '',...
+        'Color', [.6 .6 .6], 'LineStyle', LineStyle, 'LineWidth', 12);
+    % Stellgrößenbargraph
+    plot([(x-x_offset + 0.5) (x-x_offset + 0.5)], [(y-2*y_offset - 1.2) (y-2*y_offset - 1.2 + abs(p_norm)*1.0)],...
+        '',...
+        'Color', LineColor, 'LineStyle', LineStyle, 'LineWidth', 8);
+    
+    if (typ == "Speicher")
+        % Box für Batteriesymbol
+        plot([(x-x_offset + 1.5) (x-x_offset + 1.5)], [(y-2*y_offset - 1.2) (y-2*y_offset - 1.2 + 0.9)],...
+            '',...
+            'Color', [.6 .6 .6], 'LineStyle', LineStyle, 'LineWidth', 24);
+        plot([(x-x_offset + 1.5) (x-x_offset + 1.5)], [(y-2*y_offset - 1.2) (y-2*y_offset - 1.2 + 1.0)],...
+            '',...
+            'Color', [.6 .6 .6], 'LineStyle', LineStyle, 'LineWidth', 12);
+        % Füllstand Batterie
+        plot([(x-x_offset + 1.5) (x-x_offset + 1.5)], [(y-2*y_offset - 1.2) (y-2*y_offset - 1.2 + 0.9*Kraftwerk.b_N)],...
+            '',...
+            'Color', [.2 .2 1], 'LineStyle', LineStyle, 'LineWidth', 20);
+    end
+    
+    % Text des Kraftwerks
+    Kraftwerkstext = sprintf("%s %03i\np=%8.0f kW\nP=%8.0f kW", typ, n, p, P);
+    text(x - x_offset ,y - 2*y_offset, Kraftwerkstext,...
+        'FontSize',10, 'Rotation', 90,...
+        'HorizontalAlignment', 'Right',...
+        'VerticalAlignment', 'bottom',...
+        'FontName', 'FixedWidth');
+end
 
 %Kraftwerke / Lasten / Speicher:
 function power = Netzausspeiseleistung_verfuegbar_min()
