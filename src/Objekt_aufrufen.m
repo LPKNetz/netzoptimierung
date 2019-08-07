@@ -298,11 +298,8 @@ datetime(time, 'convertfrom','posixtime');
 %Kraftwerksliste(1,10).Zeit_setzen(1562224805)   % TEST
 
 
-%% 6. Time Sequencer
 
-
-
-%% 7. Grafik erstellen
+%% 6. Grafik erstellen
 
 % Check version
 if verLessThan('matlab','8.6')
@@ -397,6 +394,131 @@ hold off;
 %set(gca,'XTick',[],'YTick',[])
 % Add title
 %title('Leitungsfluss')
+
+
+%% 7. Netzregler-Optimizer:   
+
+%1. Startwerte festlegen 
+%2. Umgebungswerte bilden  (Verfahren der finiten Differenzen)
+%3. Gradient bilden
+%4. Gradient entgegengesetzt "entlanggehen" mit Schrittweite (wird bestimmt durch Gauß-Newton) und dort neue Umgebungswerte bilden
+%   repeat zu 3.
+%5. STOPP bei Abbruchbedingung (=wenn Veränderung zum vorherigen Ergebnis
+%   0,0001 (z.B.) nicht mehr unterschreitet 
+
+
+%Einstellungen:
+format long
+tol = 1e-8;     %Definieren der Genauigkeit
+maxstep = 20;   %Definieren des Abbruchkriteriums
+a_k = 0.1;      %Definieren der Schrittweite
+
+
+
+%1. + 2. Startwerte festlegen für Startiteration und Umgebungswerte bilden (Verfahren der finiten Differenzen)
+
+
+%pL0 - Start-vektor aus allen pLs der Leitungen machen:
+pL0=0;
+[~,l]=size(Leitungsliste);
+for i=1:l 
+    Leitung=Leitungsliste(1,i);
+    pL0=Leitung.p_L;
+end
+
+%X0 - Start-stellwertvektor aus allen xNs der Kraftwerke machen
+X0=0;
+[~,m]=size(Kraftwerksliste);
+for i=1:m 
+Kraftwerk=Kraftwerksliste(1,i);
+X0(i,1)=Kraftwerk.x_N;
+end
+
+%sum_p_L0 berechnen (= Startsumme der quadrierten pL-Werte)
+sum_p_L0=0;
+for i=1:l 
+    Leitung=Leitungsliste(1,i);
+    sum_p_L0=sum_p_L0+(Leitung.p_L^2);    
+end
+
+
+
+%3. Gradient bilden für Startiteration
+
+
+sum_p_Lk=0;  %sum_p_Lk berechnen (= Startsumme der quadrierten pL-Werte)
+for i=1:l
+    Leitung=Leitungsliste(1,i);
+    sum_p_Lk=sum_p_Lk+(Leitung.p_L^2);
+end
+Gradient0=(sum_p_L0-sum_p_Lk)/a_k;
+
+%Für initialen Wechsel von Start- in Folgeineiteration:
+pLk = pL0;
+Xk = X0;
+Xk1 = Xk;
+Xk = X0;
+Gradient = Gradient0;
+sum_p_Lk1 = sum_p_Lk;
+
+%4. + 5. für Folge-Iterationen:
+for i=1:maxstep
+    
+    %hier neue Netzberechnung:
+    pLk = pLk + i;
+    
+    %neue werden zu alten Werten, Aufaddieren der Schrittweite
+    Xk = Xk1;
+    XK1 = Xk + a_k;
+    sum_p_Lk = sum_p_Lk1;
+    
+    %pLk - Vektor aus allen pLs der Leitungen machen
+    [~,l]=size(Leitungsliste);
+    for i=1:l
+        Leitung=Leitungsliste(1,i);
+        pLk=Leitung.p_L;
+    end
+    %Xk - Stellwertvektor aus allen xNs der Kraftwerke machen
+    [~,m]=size(Kraftwerksliste);
+    for i=1:m
+        Kraftwerk=Kraftwerksliste(1,i);
+        Xk(i,1)=Kraftwerk.x_N;
+    end
+    %sum_p_Lk berechnen (= Summe der quadrierten pL-Werte)
+    for i=1:l
+        Leitung=Leitungsliste(1,i);
+        sum_p_Lk=sum_p_Lk+(Leitung.p_L^2);
+    end
+    %sum_p_Lk1 berechnen
+    for i=1:l
+        Leitung=Leitungsliste(1,i);
+        sum_p_Lk1=sum_p_Lk1+(Leitung.p_L^2);
+    end
+    
+    %1. Gradient bilden
+    Gradient=(sum_p_Lk-sum_p_Lk1)/a_k;
+
+    %2. xk1 bilden
+    Xk1 = Xk - a_k * ((Gradient * transpose(Gradient))^-1) * Gradient * pLk
+    
+    %3. Wiederholen
+end
+
+
+
+
+%V=(); % Vektor
+%J=jacobian(,V);
+%G=gradient(,x);
+%D=diff(,x)
+%x_k+1=x_k-a_k*(( transpose(von x0)*(von x0) )^-1)*transpose(von x0)*(von xk)
+
+
+
+%% 8. Time Sequencer
+
+
+
 %% Logfile schließen
 if Logfile ~= 1
     fclose(Logfile);
@@ -750,3 +872,6 @@ function pp = Bemessungsleistung_zweitgroesste_Leitung()
     clear n
 end
 
+
+
+% Funktionen für den Netzregler:
