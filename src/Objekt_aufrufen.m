@@ -1,521 +1,47 @@
 clc, clear, close all 
 feature('DefaultCharacterSet','UTF-8');
 %% 0. Logfile anlegen:
+global Logfile;
 Logfile=fopen('../log/Logfile.txt', 'w');
 if Logfile == -1
   error('Cannot open log file.');
 end
 %fprintf(Logfile, '%s: %s\n', datestr(now, 0), test);
 
-
-
 % Folgende Zeile auskommentieren um auf die Konsole zu schreiben statt in
 % das Logfile:
 
 %Logfile=1; 
         
-%% 1. Knoten-Objekte initialisieren:
-Knotenmatrix = readmatrix('../data/Knotentabelle.xlsx');
-[m,~] = size(Knotenmatrix); %debug output
-global Knotenliste
-Knotenliste = Knoten.empty;
-for i=1:m 
-    Knotenliste(i) = Knoten    (Knotenmatrix(i,1),...% k
-                                Knotenmatrix(i,2),...% longK
-                                Knotenmatrix(i,3),...% latK
-                                Knotenmatrix(i,4),...% PK
-                                Knotenmatrix(i,5),...% CK
-                                Knotenmatrix(i,6));  % oPK
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+global Knotenliste;
+Knotenliste = Knoten_initialisieren();
+
+global Leitungsliste;
+Leitungsliste = Leitungen_initialisieren();
+
+global Kraftwerksliste;
+Kraftwerksliste = Kraftwerke_initialisieren();
+
+Leitungsfluss_berechnen();
+Logfile_schreiben();
+
+
+
+for i=1:10
+    Netz_anregeln();
 end
-clear i
-clear m
-clear Knotenmatrix
-
-
-%% 2. Leitungs-Objekte initialisieren:
-Leitungsmatrix = readmatrix('../data/Leitungstabelle.xlsx');
-[m,~] = size(Leitungsmatrix);
-
-global Leitungsliste
-Leitungsliste = Leitungen.empty;
-for i=1:m
-    Leitungsliste(i)=Leitungen     (Leitungsmatrix(i,1),...% l
-                                    Leitungsmatrix(i,2),...% kL1
-                                    Leitungsmatrix(i,3),...% kL2
-                                    Leitungsmatrix(i,4),...% PL
-                                    Leitungsmatrix(i,5),...% pL
-                                    Leitungsmatrix(i,6),...% RL
-                                    Leitungsmatrix(i,7),...% CL
-                                    Leitungsmatrix(i,8),...% cL
-                                    Leitungsmatrix(i,9),...% oKL  
-                                    Leitungsmatrix(i,10)); % oPL
-end
-clear i
-clear m
-%clear Leitungsmatrix   NEGATIV ! wird in Kapitel 4 noch gebraucht
-
-
-%% 3. Kraftwerke_Lasten_Speicher
-Kraftwerksmatrix = readtable('../data/Kraftwerke_Lasten_Speichertabelle.xlsx');
-[m,~] = size(Kraftwerksmatrix);
-global Kraftwerksliste 
-Kraftwerksliste = Kraftwerke_Lasten_Speicher.empty;
-for i=1:m  
-Kraftwerksliste(i)=Kraftwerke_Lasten_Speicher  (Kraftwerksmatrix(i,1),... % Number
-                                                Kraftwerksmatrix(i,2),... % K    
-                                                Kraftwerksmatrix(i,3),... % PN
-                                                Kraftwerksmatrix(i,4),... % xNmin
-                                                Kraftwerksmatrix(i,5),... % xNmax
-                                                Kraftwerksmatrix(i,6),... % xN
-                                                Kraftwerksmatrix(i,7),... % RN
-                                                Kraftwerksmatrix(i,8),... % CN
-                                                Kraftwerksmatrix(i,9),... % cN
-                                                Kraftwerksmatrix(i,10),... % oNP
-                                                Kraftwerksmatrix(i,11),...% BN
-                                                Kraftwerksmatrix(i,12),...% bN
-                                                Kraftwerksmatrix(i,13),...% nN
-                                                Kraftwerksmatrix(i,14),...% oMK
-                                                Kraftwerksmatrix(i,15),...% oNB
-                                                Kraftwerksmatrix(i,16));  % TQ
-end
-clear i
-clear m
-clear Kraftwerksmatrix
-
-
-%% 4. Netztabellen einlesen, Netzmatrizen erstellen, aktuellen Leitungsfluss berechnen:
-% Netzmatrix_Leitungen (=A im Sinne v. Ax=b) erstellen:
-
-k=length(Knotenliste);
-l=length(Leitungsliste);
-for i=1:k   %Netzmatrix_Leitungen erstellen
-    for j=1:k
-        if i == j
-            G_Summe=0;
-            for m=1:l
-                Leitung=Leitungsliste(1,m);
-                R=Leitung.Leitungswiderstand();
-                G=1/R;
-                if Leitung.Startknoten() == i || Leitung.Endknoten() == i
-                    G_Summe=G_Summe+G;
-                end
-            end
-            Netzmatrix_Leitungen(i,j)=G_Summe;
-            
-        else
-            G_Summe=0;
-            for m=1:l
-                Leitung=Leitungsliste(1,m);
-                R=Leitung.Leitungswiderstand();
-                G=1/R;
-                if (Leitung.Startknoten() == i && Leitung.Endknoten() == j)||...
-                        (Leitung.Startknoten() == j && Leitung.Endknoten() == i)
-                    G_Summe=G_Summe+G;
-                end
-            end
-            Netzmatrix_Leitungen(i,j)=-G_Summe;  
-        end
-        
-        
-        %Netzmatrix_Leitungen(i,j)= 1/Leitungsliste(1,i).Leitungswiderstand();
-       
-    end
-end
-clear G_Summe
-clear i
-clear j
-clear k
-clear l
-clear m
-clear R
-clear G
-
-% Leistungsvektor erstellen:
-k=length(Knotenliste);
-n=length(Kraftwerksliste);
-for i=1:k  
-    P_Summe=0;
-    for j=1:n
-        Kraftwerk = Kraftwerksliste(1,i);
-        if Kraftwerk.Netzverknuepfungspunkt() == j 
-            P_Summe=P_Summe+Kraftwerk.Leistung_aktuell();
-        end
-    end
-    Leistungsvektor(i,1)=P_Summe;
-end
-clear i
-clear k
-clear j
-clear n
-clear P_Summe
-clear Kraftwerk
-
-%Potentialvektor erstellen:
-Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
-clear Netzmatrix_Leitungen
-clear Leistungsvektor
-
-%Lastfluss auf Leitungen berechnen:
-l=length(Leitungsliste);
-for i=1:l
-    Leitung=Leitungsliste(1,i);
-    R=Leitung.Leitungswiderstand();
-    s=Leitung.Startknoten();
-    e=Leitung.Endknoten();
-    Startpotential=Potentialvektor(s,1);
-    Endpotential=Potentialvektor(e,1);
-    Potentialdifferenz=Startpotential-Endpotential;
-    p=Potentialdifferenz/R;
-    Leitung.Aktuelle_Leistung_setzen_in_kW(p);
-%fprintf(Logfile, 'Leistung ueber Leitung %i:  %8.0f kW\n',i,p)
-end
-
-
-        %fprintf('Leitung %i: %4d kW\n', permute(cat(3,B,PL), [3 2 1]));
-
-
-clear M
-clear b
-clear z
-clear s
-clear e
-clear R
-clear p
-clear Leitung
-clear l
-clear c
-clear Leitungsmatrix
-clear i
-clear Startpotential
-clear Endpotential
-clear Potentialvektor
-clear Potentialdifferenz
-
-
-%% 5. Aufruf und Print
-%Anzahl geladener Einheiten:
-fprintf(Logfile, '           Daten laden...\n');
-fprintf(Logfile, '\n');
-
-[~,b]=size(Knotenliste);
-fprintf(Logfile, '%i Knoten geladen\n',b); 
-clear b
-
-[~,b]=size(Leitungsliste);
-fprintf(Logfile, '%i Leitungen geladen\n',b); 
-clear b
-
-[~,b]=size(Kraftwerksliste);
-fprintf(Logfile, '%i Kraftwerke geladen\n',b); 
-clear b
-
-fprintf(Logfile, '\n');
-fprintf(Logfile, '\n');
-
-
-
-%  Berechnung Netzdaten:
-
-fprintf(Logfile, '           Berechne Netzdaten...\n');
-fprintf(Logfile, '\n');
-%Kraftwerke / Lasten / Speicher:
-fprintf(Logfile, 'Kraftwerke / Lasten / Speicher:\n');
-fprintf(Logfile, '\n');
-fprintf(Logfile, 'Maximal verfuegbare Netzeinspeiseleistung: %i kW\n',Netzeinspeiseleistung_verfuegbar_max); 
-fprintf(Logfile, 'Minimal verfuegbare Netzeinspeiseleistung: %i kW\n',Netzeinspeiseleistung_verfuegbar_min);
-fprintf(Logfile, 'Maximal verfuegbare Netzausspeiseleistung: %i kW\n',Netzausspeiseleistung_verfuegbar_max);
-fprintf(Logfile, 'Minimal verfuegbare Netzausspeiseleistung: %i kW\n',Netzausspeiseleistung_verfuegbar_min);
-fprintf(Logfile, 'Aktuelle Netzeinspeiseleistung: %i kW\n',Netzeinspeiseleistung_aktuell);
-fprintf(Logfile, 'Aktuelle Netzausspeiseleistung: %i kW\n',Netzausspeiseleistung_aktuell);
-fprintf(Logfile, 'Aktuelle Netzunterdeckung: %i kW\n',Netzunterdeckung_aktuell);
-fprintf(Logfile, 'Aktuelle Kraftwerksreserve: %i kW\n',Kraftwerksreserve_aktuell);
-fprintf(Logfile, 'Nennleistung groesste Einheit: %i kW\n',Nennleistung_groesste_Einheit);
-fprintf(Logfile, 'Nennleistung zweitgroesste Einheit: %i kW\n',Nennleistung_zweitgroesste_Einheit);
-fprintf(Logfile, '\n');
-%Leitungen:
-fprintf(Logfile, 'Leitungen:\n');
-fprintf(Logfile, '\n');
-l=length(Leitungsliste);
-for i=1:l
-    Leitung=Leitungsliste(1,i);
-    p=Leitung.Transportleistung();
-fprintf(Logfile, 'Leistung ueber Leitung %i:  %8.0f kW\n',i,p);
-end
-fprintf(Logfile, '\n');
-clear p
-clear l
-clear i
-clear Leitung
-fprintf(Logfile, 'Maximal verfuegbare Bemessungsleistung in beide Richtungen : %i kW\n',Leitungen_Bemessungsleistung_verfuegbar_max);
-fprintf(Logfile, 'Aktuelle Leitungsleistung vorwaerts: %i kW\n',Leitungsleistung_vorwaerts_aktuell);
-fprintf(Logfile, 'Aktuelle Leitungsleistung rueckwaerts: %i kW\n',Leitungsleistung_rueckwaerts_aktuell);
-   %?? fprintf(Logfile, 'Aktuelle Netzunterdeckung: %i kW\n',Netzunterdeckung_aktuell);
-%fprintf(Logfile, 'Aktuelle Leitungsreserve vorwaerts: %i kW\n',Leitungsreserve_vorwaerts_aktuell());
-%fprintf(Logfile, 'Aktuelle Leitungsreserve rueckwaerts: %i kW\n',Leitungsreserve_rueckwaerts_aktuell());
-fprintf(Logfile, 'Bemessungsleistung groesste Leitung: %i kW\n',Bemessungsleistung_groesste_Leitung);
-fprintf(Logfile, 'Bemessungsleistung zweitgroesste Leitung: %i kW\n',Bemessungsleistung_zweitgroesste_Leitung);
-fprintf(Logfile, '\n');
-fprintf(Logfile, '\n');
-
-
-
-%  Validierung Netzzustand:
-
-fprintf(Logfile, '           Validiere Netzzustand...\n');
-fprintf(Logfile, '\n');
-%Kraftwerke / Lasten / Speicher:
-fprintf(Logfile, 'Kraftwerke / Lasten / Speicher:\n');
-fprintf(Logfile, '\n');
-fprintf(Logfile, 'Anzahl Einheiten nicht im Regelbereich: %i \n',Anzahl_Kraftwerks_und_Last_Stoerfaelle());
-fprintf(Logfile, 'Summe Nennleistung nicht im Regelbereich: %i kW\n',Nennleistung_Kraftwerks_und_Last_Stoerfaelle());
-if Einfachredundanz_Kraftwerke_ok()
-    fprintf(Logfile, 'Einfachredundanz Kraftwerke: OK\n');
-else
-    fprintf(Logfile, 'Einfachredundanz Kraftwerke: NICHT OK\n');  
-end
-if Zweifachredundanz_Kraftwerke_ok()
-    fprintf(Logfile, 'Zweifachredundanz Kraftwerke: OK\n');
-else
-    fprintf(Logfile, 'Zweifachredundanz Kraftwerke: NICHT OK\n');  
-end
-fprintf(Logfile, '\n');
-%Leitungen:
-fprintf(Logfile, 'Leitungen:\n');
-fprintf(Logfile, '\n');
-fprintf(Logfile, 'Anzahl Leitungen nicht im Arbeitsbereich: %i \n',Anzahl_Leitungs_Stoerfaelle());
-fprintf(Logfile, 'Summe Bemessungsleistung nicht im Arbeitsbereich: %i kW\n',Bemessungsleistung_Leitungs_Stoerfaelle());
-fprintf(Logfile, '\n');
-fprintf(Logfile, '\n');
-
-
-fname = '../data/weather/wind/Bremerhaven_Juli_2019.json';
-val = jsondecode(fileread(fname));
-val.observations(1).wspd;
-time=val.observations(3).valid_time_gmt;
-
-datetime(time, 'convertfrom','posixtime');
-
-%Kraftwerksliste(1,10).Zeit_setzen(1562224805)   % TEST
-
-
-
-%% 6. Grafik erstellen
-
-% Check version
-if verLessThan('matlab','8.6')
-    error('digraph is available in R2015b or newer.')
-end
-
-% Create a directed graph object using the digraph function
-figure('units','normalized','position',[0,0,1,1]);
-hold on;
-axis ([30 60 20 30]);
-pbaspect([1 1 1])
-
-[~,k]=size(Knotenliste);
-G = digraph();
-G = G.addnode(k);
-
-[~,l]=size(Leitungsliste);
-[~,m]=size(Kraftwerksliste);
-c=cell([l 1]);
-title('Netzkarte');
-xlabel('Laengengrad [deg]') 
-ylabel('Breitengrad [deg]') 
-for i=1:l
-    Leitung=Leitungsliste(1,i);
-    p = Leitung.Transportleistung();
-    p_norm = Leitung.p_L;
-
-    if (p >= 0)
-        s = Leitung.Startknoten();
-        e = Leitung.Endknoten();
-    else
-        s = Leitung.Endknoten();
-        e = Leitung.Startknoten();
-    end
-    
-    
-    c{i,1}=num2str(abs(p),'%6.0f kW');
-    G = addedge(G,s,e,round(abs(p)));
-    fprintf("Leitung %i: von %i nach %i: %6.0f kW\n", i, s, e, abs(p));
-    
-    Startknoten = Knotenliste(1,s);
-    Endknoten = Knotenliste(1,e);
-    
-    LineColor = [.1 .2 1];
-    LineStyle = '-';
-    if (Leitung.gestoert())
-        LineColor = [1 .4 .4];
-        LineStyle = ':';
-    end
-    
-    plot([Startknoten.Long_K Endknoten.Long_K], [Startknoten.Lat_K Endknoten.Lat_K],...
-        '',...
-        'Color', LineColor, 'LineStyle', LineStyle, 'LineWidth', 0.5 + abs(p_norm));
-    Leitungstext = sprintf("L%i: %.0f kW\n", i, abs(p));
-    
-    Textwinkel = (atan(3*(Endknoten.Lat_K-Startknoten.Lat_K)/(Endknoten.Long_K-Startknoten.Long_K)))*360/2/3.1415;
-    text((Startknoten.Long_K + Endknoten.Long_K) / 2,...
-        (Startknoten.Lat_K + Endknoten.Lat_K) / 2, Leitungstext,...
-        'FontSize',10, 'Rotation', Textwinkel,...
-        'HorizontalAlignment', 'Center');
-end
-
-for i=1:k
-    Knoten=Knotenliste(1,i);
-    Long = Knoten.Long_K;
-    Lat = Knoten.Lat_K;
-    plot(Long, Lat,...
-        '.', 'MarkerSize',20,'MarkerEdgeColor',[.2 .7 .6]);
-    Knotentext = sprintf("K%i", i);
-    text(Long + .5, Lat, Knotentext, 'FontSize',15, 'Color', [.2 .7 .6]);
-end
-
-for i=1:m
-    Kraftwerk=Kraftwerksliste(1,i);
-    k = Kraftwerk.K;
-    Knoten=Knotenliste(1,k);
-    x=Knoten.Long_K;
-    y=Knoten.Lat_K;
-    plotKraftwerk(x, y, Kraftwerk);
-end
-
-hold off;
-
-%G.Edges
-%plot(G,'EdgeLabel',c)
-%plot(G, 'EdgeLabel', G.Edges.Weight)
-
-% Visualize the graph
-%figure
-%plot(G,'EdgeLabel',G.Edges.Weight,'layout','layered')
-% Remove axes ticks
-%set(gca,'XTick',[],'YTick',[])
-% Add title
-%title('Leitungsfluss')
-
-
-%% 7. Netzregler-Optimizer:   
-
-%1. Startwerte festlegen 
-%2. Umgebungswerte bilden  (Verfahren der finiten Differenzen)
-%3. Gradient bilden
-%4. Gradient entgegengesetzt "entlanggehen" mit Schrittweite (wird bestimmt durch Gauß-Newton) und dort neue Umgebungswerte bilden
-%   repeat zu 3.
-%5. STOPP bei Abbruchbedingung (=wenn Veränderung zum vorherigen Ergebnis
-%   0,0001 (z.B.) nicht mehr unterschreitet 
-
-
-%Einstellungen:
-format long
-tol = 1e-8;     %Definieren der Genauigkeit
-maxstep = 20;   %Definieren des Abbruchkriteriums
-a_k = 0.1;      %Definieren der Schrittweite
-
-
-
-%1. + 2. Startwerte festlegen für Startiteration und Umgebungswerte bilden (Verfahren der finiten Differenzen)
-
-
-%pL0 - Start-vektor aus allen pLs der Leitungen machen:
-pL0=0;
-[~,l]=size(Leitungsliste);
-for i=1:l 
-    Leitung=Leitungsliste(1,i);
-    pL0=Leitung.p_L;
-end
-
-%X0 - Start-stellwertvektor aus allen xNs der Kraftwerke machen
-X0=0;
-[~,m]=size(Kraftwerksliste);
-for i=1:m 
-Kraftwerk=Kraftwerksliste(1,i);
-X0(i,1)=Kraftwerk.x_N;
-end
-
-%sum_p_L0 berechnen (= Startsumme der quadrierten pL-Werte)
-sum_p_L0=0;
-for i=1:l 
-    Leitung=Leitungsliste(1,i);
-    sum_p_L0=sum_p_L0+(Leitung.p_L^2);    
-end
-
-
-
-%3. Gradient bilden für Startiteration
-
-
-sum_p_Lk=0;  %sum_p_Lk berechnen (= Startsumme der quadrierten pL-Werte)
-for i=1:l
-    Leitung=Leitungsliste(1,i);
-    sum_p_Lk=sum_p_Lk+(Leitung.p_L^2);
-end
-Gradient0=(sum_p_L0-sum_p_Lk)/a_k;
-
-%Für initialen Wechsel von Start- in Folgeineiteration:
-pLk = pL0;
-Xk = X0;
-Xk1 = Xk;
-Xk = X0;
-Gradient = Gradient0;
-sum_p_Lk1 = sum_p_Lk;
-
-%4. + 5. für Folge-Iterationen:
-for i=1:maxstep
-    
-    %hier neue Netzberechnung:
-    pLk = pLk + i;
-    
-    %neue werden zu alten Werten, Aufaddieren der Schrittweite
-    Xk = Xk1;
-    XK1 = Xk + a_k;
-    sum_p_Lk = sum_p_Lk1;
-    
-    %pLk - Vektor aus allen pLs der Leitungen machen
-    [~,l]=size(Leitungsliste);
-    for i=1:l
-        Leitung=Leitungsliste(1,i);
-        pLk=Leitung.p_L;
-    end
-    %Xk - Stellwertvektor aus allen xNs der Kraftwerke machen
-    [~,m]=size(Kraftwerksliste);
-    for i=1:m
-        Kraftwerk=Kraftwerksliste(1,i);
-        Xk(i,1)=Kraftwerk.x_N;
-    end
-    %sum_p_Lk berechnen (= Summe der quadrierten pL-Werte)
-    for i=1:l
-        Leitung=Leitungsliste(1,i);
-        sum_p_Lk=sum_p_Lk+(Leitung.p_L^2);
-    end
-    %sum_p_Lk1 berechnen
-    for i=1:l
-        Leitung=Leitungsliste(1,i);
-        sum_p_Lk1=sum_p_Lk1+(Leitung.p_L^2);
-    end
-    
-    %1. Gradient bilden
-    Gradient=(sum_p_Lk-sum_p_Lk1)/a_k;
-
-    %2. xk1 bilden
-    Xk1 = Xk - a_k * ((Gradient * transpose(Gradient))^-1) * Gradient * pLk
-    
-    %3. Wiederholen
-end
-
-
-
-
-%V=(); % Vektor
-%J=jacobian(,V);
-%G=gradient(,x);
-%D=diff(,x)
-%x_k+1=x_k-a_k*(( transpose(von x0)*(von x0) )^-1)*transpose(von x0)*(von xk)
-
+Grafik_plotten();
 
 
 %% 8. Time Sequencer
+
+
+
+
+
 
 
 
@@ -523,15 +49,507 @@ end
 if Logfile ~= 1
     fclose(Logfile);
 end
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
 
 
 
 %% Funktionen:
 
+%Initialisieren:
+function result = Knoten_initialisieren()  %% 1. Knoten-Objekte initialisieren:
+    Knotenmatrix = readmatrix('../data/Knotentabelle.xlsx');
+    [m,~] = size(Knotenmatrix); %debug output
+    %global Knotenliste
+    Knotenliste = Knoten.empty;
+    for i=1:m
+        Knotenliste(i) = Knoten    (Knotenmatrix(i,1),...% k
+            Knotenmatrix(i,2),...% longK
+            Knotenmatrix(i,3),...% latK
+            Knotenmatrix(i,4),...% PK
+            Knotenmatrix(i,5),...% CK
+            Knotenmatrix(i,6));  % oPK
+    end
+    result = Knotenliste;
+    clear i
+    clear m
+    clear Knotenmatrix
+end
+function result = Leitungen_initialisieren() %% 2. Leitungs-Objekte initialisieren:
+    Leitungsmatrix = readmatrix('../data/Leitungstabelle.xlsx');
+    [m,~] = size(Leitungsmatrix);
+
+
+    Leitungsliste = Leitungen.empty;
+
+    for i=1:m
+        Leitungsliste(i)=Leitungen     (Leitungsmatrix(i,1),...% l
+                                        Leitungsmatrix(i,2),...% kL1
+                                        Leitungsmatrix(i,3),...% kL2
+                                        Leitungsmatrix(i,4),...% PL
+                                        Leitungsmatrix(i,5),...% pL
+                                        Leitungsmatrix(i,6),...% RL
+                                        Leitungsmatrix(i,7),...% CL
+                                        Leitungsmatrix(i,8),...% cL
+                                        Leitungsmatrix(i,9),...% oKL  
+                                        Leitungsmatrix(i,10)); % oPL
+    end
+    result = Leitungsliste;
+    clear i
+    clear m
+    clear Leitungsmatrix 
+end
+function result = Kraftwerke_initialisieren() %% 3. Kraftwerke_Lasten_Speicher
+    Kraftwerksmatrix = readtable('../data/Kraftwerke_Lasten_Speichertabelle.xlsx');
+    [m,~] = size(Kraftwerksmatrix);
+    Kraftwerksliste = Kraftwerke_Lasten_Speicher.empty;
+    for i=1:m  
+    Kraftwerksliste(i)=Kraftwerke_Lasten_Speicher  (Kraftwerksmatrix(i,1),... % Number
+                                                    Kraftwerksmatrix(i,2),... % K    
+                                                    Kraftwerksmatrix(i,3),... % PN
+                                                    Kraftwerksmatrix(i,4),... % xNmin
+                                                    Kraftwerksmatrix(i,5),... % xNmax
+                                                    Kraftwerksmatrix(i,6),... % xN
+                                                    Kraftwerksmatrix(i,7),... % RN
+                                                    Kraftwerksmatrix(i,8),... % CN
+                                                    Kraftwerksmatrix(i,9),... % cN
+                                                    Kraftwerksmatrix(i,10),... % oNP
+                                                    Kraftwerksmatrix(i,11),...% BN
+                                                    Kraftwerksmatrix(i,12),...% bN
+                                                    Kraftwerksmatrix(i,13),...% nN
+                                                    Kraftwerksmatrix(i,14),...% oMK
+                                                    Kraftwerksmatrix(i,15),...% oNB
+                                                    Kraftwerksmatrix(i,16));  % TQ
+    end
+    result = Kraftwerksliste;
+    clear i
+    clear m
+    clear Kraftwerksmatrix
+end
+
+%Netz berechnen:
+function Leitungsfluss_berechnen() %% 4. Netztabellen einlesen, Netzmatrizen erstellen, aktuellen Leitungsfluss berechnen:
+    % Funktion ohne result! Trägt Ergebnisse direkt in die Leitungsliste ein.
+    % Netzmatrix_Leitungen (=A im Sinne v. Ax=b) erstellen:
+    global Knotenliste;
+    global Leitungsliste;
+    global Kraftwerksliste;
+    k=length(Knotenliste);
+    l=length(Leitungsliste);
+    for i=1:k   %Netzmatrix_Leitungen erstellen
+        for j=1:k
+            if i == j
+                G_Summe=0;
+                for m=1:l
+                    Leitung=Leitungsliste(1,m);
+                    R=Leitung.Leitungswiderstand();
+                    G=1/R;
+                    if Leitung.Startknoten() == i || Leitung.Endknoten() == i
+                        G_Summe=G_Summe+G;
+                    end
+                end
+                Netzmatrix_Leitungen(i,j)=G_Summe;
+
+            else
+                G_Summe=0;
+                for m=1:l
+                    Leitung=Leitungsliste(1,m);
+                    R=Leitung.Leitungswiderstand();
+                    G=1/R;
+                    if (Leitung.Startknoten() == i && Leitung.Endknoten() == j)||...
+                            (Leitung.Startknoten() == j && Leitung.Endknoten() == i)
+                        G_Summe=G_Summe+G;
+                    end
+                end
+                Netzmatrix_Leitungen(i,j)=-G_Summe;  
+            end
+
+
+            %Netzmatrix_Leitungen(i,j)= 1/Leitungsliste(1,i).Leitungswiderstand();
+
+        end
+    end
+    clear G_Summe
+    clear i
+    clear j
+    clear k
+    clear l
+    clear m
+    clear R
+    clear G
+
+    % Leistungsvektor erstellen:
+    k=length(Knotenliste);
+    n=length(Kraftwerksliste);
+    for i=1:k  
+        P_Summe=0;
+        for j=1:n
+            Kraftwerk = Kraftwerksliste(1,j);
+            if Kraftwerk.Netzverknuepfungspunkt() == i 
+                P_Summe=P_Summe+Kraftwerk.Leistung_aktuell();
+            end
+        end
+        Leistungsvektor(i,1)=P_Summe;
+    end
+    clear i
+    clear k
+    clear j
+    clear n
+    clear P_Summe
+    clear Kraftwerk
+
+    %Potentialvektor erstellen:
+    Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
+    clear Netzmatrix_Leitungen
+    clear Leistungsvektor
+
+    %Lastfluss auf Leitungen berechnen:
+    l=length(Leitungsliste);
+    for i=1:l
+        Leitung=Leitungsliste(1,i);
+        R=Leitung.Leitungswiderstand();
+        s=Leitung.Startknoten();
+        e=Leitung.Endknoten();
+        Startpotential=Potentialvektor(s,1);
+        Endpotential=Potentialvektor(e,1);
+        Potentialdifferenz=Startpotential-Endpotential;
+        p=Potentialdifferenz/R;
+        Leitung.Aktuelle_Leistung_setzen_in_kW(p);
+    %fprintf(Logfile, 'Leistung ueber Leitung %i:  %8.0f kW\n',i,p)
+    end
+    clear M
+    clear b
+    clear z
+    clear s
+    clear e
+    clear R
+    clear p
+    clear Leitung
+    clear l
+    clear c
+    clear Leitungsmatrix
+    clear i
+    clear Startpotential
+    clear Endpotential
+    clear Potentialvektor
+    clear Potentialdifferenz
+end
+
+%Logfile schreiben:
+function Logfile_schreiben() %% 5. Logfile schreiben
+    global Logfile;
+    global Knotenliste;
+    global Leitungsliste;
+    global Kraftwerksliste;
+    %Anzahl geladener Einheiten:
+    fprintf(Logfile, '           Daten laden...\n');
+    fprintf(Logfile, '\n');
+
+    [~,b]=size(Knotenliste);
+    fprintf(Logfile, '%i Knoten geladen\n',b); 
+    clear b
+
+    [~,b]=size(Leitungsliste);
+    fprintf(Logfile, '%i Leitungen geladen\n',b); 
+    clear b
+
+    [~,b]=size(Kraftwerksliste);
+    fprintf(Logfile, '%i Kraftwerke geladen\n',b); 
+    clear b
+
+    fprintf(Logfile, '\n');
+    fprintf(Logfile, '\n');
+
+
+
+    %  Berechnung Netzdaten:
+
+    fprintf(Logfile, '           Berechne Netzdaten...\n');
+    fprintf(Logfile, '\n');
+    %Kraftwerke / Lasten / Speicher:
+    fprintf(Logfile, 'Kraftwerke / Lasten / Speicher:\n');
+    fprintf(Logfile, '\n');
+    fprintf(Logfile, 'Maximal verfuegbare Netzeinspeiseleistung: %i kW\n',Netzeinspeiseleistung_verfuegbar_max); 
+    fprintf(Logfile, 'Minimal verfuegbare Netzeinspeiseleistung: %i kW\n',Netzeinspeiseleistung_verfuegbar_min);
+    fprintf(Logfile, 'Maximal verfuegbare Netzausspeiseleistung: %i kW\n',Netzausspeiseleistung_verfuegbar_max);
+    fprintf(Logfile, 'Minimal verfuegbare Netzausspeiseleistung: %i kW\n',Netzausspeiseleistung_verfuegbar_min);
+    fprintf(Logfile, 'Aktuelle Netzeinspeiseleistung: %i kW\n',Netzeinspeiseleistung_aktuell);
+    fprintf(Logfile, 'Aktuelle Netzausspeiseleistung: %i kW\n',Netzausspeiseleistung_aktuell);
+    fprintf(Logfile, 'Aktuelle Netzunterdeckung: %i kW\n',Netzunterdeckung_aktuell);
+    fprintf(Logfile, 'Aktuelle Kraftwerksreserve: %i kW\n',Kraftwerksreserve_aktuell);
+    fprintf(Logfile, 'Nennleistung groesste Einheit: %i kW\n',Nennleistung_groesste_Einheit);
+    fprintf(Logfile, 'Nennleistung zweitgroesste Einheit: %i kW\n',Nennleistung_zweitgroesste_Einheit);
+    fprintf(Logfile, '\n');
+    %Leitungen:
+    fprintf(Logfile, 'Leitungen:\n');
+    fprintf(Logfile, '\n');
+    l=length(Leitungsliste);
+    for i=1:l
+        Leitung=Leitungsliste(1,i);
+        p=Leitung.Transportleistung();
+    fprintf(Logfile, 'Leistung ueber Leitung %i:  %8.0f kW\n',i,p);
+    end
+    fprintf(Logfile, '\n');
+    clear p
+    clear l
+    clear i
+    clear Leitung
+    fprintf(Logfile, 'Maximal verfuegbare Bemessungsleistung in beide Richtungen : %i kW\n',Leitungen_Bemessungsleistung_verfuegbar_max);
+    fprintf(Logfile, 'Aktuelle Leitungsleistung vorwaerts: %i kW\n',Leitungsleistung_vorwaerts_aktuell);
+    fprintf(Logfile, 'Aktuelle Leitungsleistung rueckwaerts: %i kW\n',Leitungsleistung_rueckwaerts_aktuell);
+       %?? fprintf(Logfile, 'Aktuelle Netzunterdeckung: %i kW\n',Netzunterdeckung_aktuell);
+    %fprintf(Logfile, 'Aktuelle Leitungsreserve vorwaerts: %i kW\n',Leitungsreserve_vorwaerts_aktuell());
+    %fprintf(Logfile, 'Aktuelle Leitungsreserve rueckwaerts: %i kW\n',Leitungsreserve_rueckwaerts_aktuell());
+    fprintf(Logfile, 'Bemessungsleistung groesste Leitung: %i kW\n',Bemessungsleistung_groesste_Leitung);
+    fprintf(Logfile, 'Bemessungsleistung zweitgroesste Leitung: %i kW\n',Bemessungsleistung_zweitgroesste_Leitung);
+    fprintf(Logfile, '\n');
+    fprintf(Logfile, '\n');
+
+
+
+    %  Validierung Netzzustand:
+
+    fprintf(Logfile, '           Validiere Netzzustand...\n');
+    fprintf(Logfile, '\n');
+    %Kraftwerke / Lasten / Speicher:
+    fprintf(Logfile, 'Kraftwerke / Lasten / Speicher:\n');
+    fprintf(Logfile, '\n');
+    fprintf(Logfile, 'Anzahl Einheiten nicht im Regelbereich: %i \n',Anzahl_Kraftwerks_und_Last_Stoerfaelle());
+    fprintf(Logfile, 'Summe Nennleistung nicht im Regelbereich: %i kW\n',Nennleistung_Kraftwerks_und_Last_Stoerfaelle());
+    if Einfachredundanz_Kraftwerke_ok()
+        fprintf(Logfile, 'Einfachredundanz Kraftwerke: OK\n');
+    else
+        fprintf(Logfile, 'Einfachredundanz Kraftwerke: NICHT OK\n');  
+    end
+    if Zweifachredundanz_Kraftwerke_ok()
+        fprintf(Logfile, 'Zweifachredundanz Kraftwerke: OK\n');
+    else
+        fprintf(Logfile, 'Zweifachredundanz Kraftwerke: NICHT OK\n');  
+    end
+    fprintf(Logfile, '\n');
+    %Leitungen:
+    fprintf(Logfile, 'Leitungen:\n');
+    fprintf(Logfile, '\n');
+    fprintf(Logfile, 'Anzahl Leitungen nicht im Arbeitsbereich: %i \n',Anzahl_Leitungs_Stoerfaelle());
+    fprintf(Logfile, 'Summe Bemessungsleistung nicht im Arbeitsbereich: %i kW\n',Bemessungsleistung_Leitungs_Stoerfaelle());
+    fprintf(Logfile, '\n');
+    fprintf(Logfile, '\n');
+
+
+    fname = '../data/weather/wind/Bremerhaven_Juli_2019.json';
+    val = jsondecode(fileread(fname));
+    val.observations(1).wspd;
+    time=val.observations(3).valid_time_gmt;
+
+    datetime(time, 'convertfrom','posixtime');
+
+    %Kraftwerksliste(1,10).Zeit_setzen(1562224805)   % TEST
+
+end
+
+%Grafik plotten:
+function Grafik_plotten() %% 6. Grafik erstellen
+    global Knotenliste;
+    global Leitungsliste;
+    global Kraftwerksliste;
+    % Check version
+    if verLessThan('matlab','8.6')
+        error('digraph is available in R2015b or newer.')
+    end
+
+    % Create a directed graph object using the digraph function
+    figure('units','normalized','position',[0,0,1,1]);
+    hold on;
+    axis ([30 60 20 30]);
+    pbaspect([1 1 1])
+
+    [~,k]=size(Knotenliste);
+    G = digraph();
+    G = G.addnode(k);
+
+    [~,l]=size(Leitungsliste);
+    [~,m]=size(Kraftwerksliste);
+    c=cell([l 1]);
+    title('Netzkarte');
+    xlabel('Laengengrad [deg]') 
+    ylabel('Breitengrad [deg]') 
+    for i=1:l
+        Leitung=Leitungsliste(1,i);
+        p = Leitung.Transportleistung();
+        p_norm = Leitung.p_L;
+
+        if (p >= 0)
+            s = Leitung.Startknoten();
+            e = Leitung.Endknoten();
+        else
+            s = Leitung.Endknoten();
+            e = Leitung.Startknoten();
+        end
+
+
+        c{i,1}=num2str(abs(p),'%6.0f kW');
+        G = addedge(G,s,e,round(abs(p)));
+        %fprintf("Leitung %i: von %i nach %i: %6.0f kW\n", i, s, e, abs(p));
+
+        Startknoten = Knotenliste(1,s);
+        Endknoten = Knotenliste(1,e);
+
+        LineColor = [.1 .2 1];
+        LineStyle = '-';
+        if (Leitung.gestoert())
+            LineColor = [1 .4 .4];
+            LineStyle = ':';
+        end
+
+        plot([Startknoten.Long_K Endknoten.Long_K], [Startknoten.Lat_K Endknoten.Lat_K],...
+            '',...
+            'Color', LineColor, 'LineStyle', LineStyle, 'LineWidth', 0.5 + abs(p_norm));
+        Leitungstext = sprintf("L%i: %.0f kW\n", i, abs(p));
+
+        Textwinkel = (atan(3*(Endknoten.Lat_K-Startknoten.Lat_K)/(Endknoten.Long_K-Startknoten.Long_K)))*360/2/3.1415;
+        text((Startknoten.Long_K + Endknoten.Long_K) / 2,...
+            (Startknoten.Lat_K + Endknoten.Lat_K) / 2, Leitungstext,...
+            'FontSize',10, 'Rotation', Textwinkel,...
+            'HorizontalAlignment', 'Center');
+    end
+
+    for i=1:k
+        Knoten=Knotenliste(1,i);
+        Long = Knoten.Long_K;
+        Lat = Knoten.Lat_K;
+        plot(Long, Lat,...
+            '.', 'MarkerSize',20,'MarkerEdgeColor',[.2 .7 .6]);
+        Knotentext = sprintf("K%i", i);
+        text(Long + .5, Lat, Knotentext, 'FontSize',15, 'Color', [.2 .7 .6]);
+    end
+
+    for i=1:m
+        Kraftwerk=Kraftwerksliste(1,i);
+        k = Kraftwerk.K;
+        Knoten=Knotenliste(1,k);
+        x=Knoten.Long_K;
+        y=Knoten.Lat_K;
+        plotKraftwerk(x, y, Kraftwerk);
+    end
+
+    hold off;
+
+    %G.Edges
+    %plot(G,'EdgeLabel',c)
+    %plot(G, 'EdgeLabel', G.Edges.Weight)
+
+    % Visualize the graph
+    %figure
+    %plot(G,'EdgeLabel',G.Edges.Weight,'layout','layered')
+    % Remove axes ticks
+    %set(gca,'XTick',[],'YTick',[])
+    % Add title
+    %title('Leitungsfluss')
+end
+
+%Netz anregeln:
+function Netz_anregeln() %% 7. Netz anregeln:   
+    global Logfile;
+    global Knotenliste;
+    global Leitungsliste;
+    global Kraftwerksliste;
+    %1. Startwerte festlegen 
+    %2. Umgebungswerte bilden  (Verfahren der finiten Differenzen)
+    %3. Gradient bilden
+    %4. Gradient entgegengesetzt "entlanggehen" mit Schrittweite (wird bestimmt durch Gauß-Newton) und dort neue Umgebungswerte bilden
+    %   repeat zu 3.
+    %5. STOPP bei Abbruchbedingung (=wenn Veränderung zum vorherigen Ergebnis
+    %   0,0001 (z.B.) nicht mehr unterschreitet 
+
+
+    %Einstellungen:
+    format long
+    tol = 1e-8;     %Definieren der Genauigkeit
+    maxstep = 20;   %Definieren des Abbruchkriteriums
+    a_k = 0.000001;      %Definieren der Schrittweite
+    c = 0.001;      %Definieren der Finiten Differenz für die Gradientbildung
+
+
+    %1. + 2. Startwerte festlegen für Startiteration und Umgebungswerte bilden (Verfahren der finiten Differenzen)
+
+
+    %pL0 - Start-vektor aus allen pLs der Leitungen machen:
+    [~,l]=size(Leitungsliste);
+    pL0=zeros(l,1);
+    for i=1:l 
+        Leitung=Leitungsliste(1,i);
+        pL0(i,1)=Leitung.p_L;
+    end
+
+    %X0 - Start-stellwertvektor aus allen xNs der Kraftwerke machen
+
+    
+    
+
+    
+    %3. Gradient bilden für Startiteration
+    [~,m]=size(Kraftwerksliste);
+    for i=1:m
+        Kraftwerk = Kraftwerksliste(1,i);
+        x0 = Kraftwerk.x_N;
+        Kraftwerk.x_N = Kraftwerk.x_N + c;
+        sum0 = Leitungslastquadratsumme_berechnen();
+        Leitungsfluss_berechnen();
+        sum1 = Leitungslastquadratsumme_berechnen();
+        Kraftwerk.x_N = x0;
+        Gradient(i,1)= (sum1-sum0)/c ; % Differenz aus Fehlerquadratsumme vor und nach der Leistungsflussberechnung 
+    end
+    
+    dx_N = -Gradient * a_k;
+    
+    for i=1:m
+        Kraftwerk = Kraftwerksliste(1,i);
+        if Kraftwerk.R_N == 2
+            Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + dx_N(i,1));
+        end
+    end
+    Logfile_schreiben();
+    %Grafik_plotten();
+    
+    
+    
+    % AUF - / AB - Regelung in Abhängigkeit von der Netzunterdeckung:
+    NU = Netzunterdeckung_aktuell();
+    [~,m]=size(Kraftwerksliste);
+    Sum_Reserve_KW = 0;
+    if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden
+        for i=1:m
+            Kraftwerk = Kraftwerksliste(1,i);
+            Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_auf_KW();
+        end
+    else  % Kraftwerksverbund muss abgeregelt werden
+        for i=1:m
+            Kraftwerk = Kraftwerksliste(1,i);
+            Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_ab_KW();
+        end
+    end
+    Anteil_NU = NU/Sum_Reserve_KW;
+    
+    % Anteil auf Regelreserve aufschalten:
+    [~,m]=size(Kraftwerksliste);   
+    for i=1:m
+        Kraftwerk = Kraftwerksliste(1,i);
+        if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden
+            RR = Kraftwerk.Regelreserve_auf();
+        else  % Kraftwerksverbund muss abgeregelt werden
+            RR = Kraftwerk.Regelreserve_ab();
+        end
+        Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + RR * Anteil_NU);
+    end
+    Logfile_schreiben();
+end
+
+
+
+
+
+%Grafik:
 function plotKraftwerk(x, y, Kraftwerk)
     n = Kraftwerk.N;
     P = Kraftwerk.P_N;
@@ -579,24 +597,24 @@ function plotKraftwerk(x, y, Kraftwerk)
     % Box für Bargraph
     plot([(x-x_offset + 0.5) (x-x_offset + 0.5)], [(y-2*y_offset - 1.2) (y-2*y_offset - 1.2 + 1.0)],...
         '',...
-        'Color', [.6 .6 .6], 'LineStyle', LineStyle, 'LineWidth', 12);
+        'Color', [.6 .6 .6], 'LineStyle', '-', 'LineWidth', 12);
     % Stellgrößenbargraph
     plot([(x-x_offset + 0.5) (x-x_offset + 0.5)], [(y-2*y_offset - 1.2) (y-2*y_offset - 1.2 + abs(p_norm)*1.0)],...
         '',...
-        'Color', LineColor, 'LineStyle', LineStyle, 'LineWidth', 8);
+        'Color', LineColor, 'LineStyle', '-', 'LineWidth', 8);
     
     if (typ == "Speicher")
         % Box für Batteriesymbol
         plot([(x-x_offset + 1.5) (x-x_offset + 1.5)], [(y-2*y_offset - 1.2) (y-2*y_offset - 1.2 + 0.9)],...
             '',...
-            'Color', [.6 .6 .6], 'LineStyle', LineStyle, 'LineWidth', 24);
+            'Color', [.6 .6 .6], 'LineStyle', '-', 'LineWidth', 24);
         plot([(x-x_offset + 1.5) (x-x_offset + 1.5)], [(y-2*y_offset - 1.2) (y-2*y_offset - 1.2 + 1.0)],...
             '',...
-            'Color', [.6 .6 .6], 'LineStyle', LineStyle, 'LineWidth', 12);
+            'Color', [.6 .6 .6], 'LineStyle', '-', 'LineWidth', 12);
         % Füllstand Batterie
         plot([(x-x_offset + 1.5) (x-x_offset + 1.5)], [(y-2*y_offset - 1.2) (y-2*y_offset - 1.2 + 0.9*Kraftwerk.b_N)],...
             '',...
-            'Color', [.2 .2 1], 'LineStyle', LineStyle, 'LineWidth', 20);
+            'Color', [.2 .2 1], 'LineStyle', '-', 'LineWidth', 20);
     end
     
     % Text des Kraftwerks
@@ -608,13 +626,16 @@ function plotKraftwerk(x, y, Kraftwerk)
         'FontName', 'FixedWidth');
 end
 
+
+%Rest:
+
 %Kraftwerke / Lasten / Speicher:
 function power = Netzausspeiseleistung_verfuegbar_min()
     global Kraftwerksliste
     [~,n]=size(Kraftwerksliste);
     power=0;
     for i=1:n
-        p = Kraftwerksliste(1,i).Nennleistung_min;
+        p = Kraftwerksliste(1,i).Nennleistung_min();
         if (p < 0)
             power= power + p;
         end
@@ -628,7 +649,7 @@ function power = Netzausspeiseleistung_verfuegbar_max()
     [~,n]=size(Kraftwerksliste);
     power=0;
     for i=1:n
-        p = Kraftwerksliste(1,i).Nennleistung_max;
+        p = Kraftwerksliste(1,i).Nennleistung_max();
         if (p < 0)
             power= power + p;
         end
@@ -642,7 +663,7 @@ function power = Netzeinspeiseleistung_verfuegbar_min()
     [~,n]=size(Kraftwerksliste);
     power=0;
     for i=1:n
-        p = Kraftwerksliste(1,i).Nennleistung_min;
+        p = Kraftwerksliste(1,i).Nennleistung_min();
         if (p > 0)
             power= power + p;
         end
@@ -656,7 +677,7 @@ function power = Netzeinspeiseleistung_verfuegbar_max()
     [~,n]=size(Kraftwerksliste);
     power=0;
     for i=1:n
-        p = Kraftwerksliste(1,i).Nennleistung_max;
+        p = Kraftwerksliste(1,i).Nennleistung_max();
         if (p > 0)
             power= power + p;
         end
@@ -670,7 +691,7 @@ function power = Netzeinspeiseleistung_aktuell()
     [~,n]=size(Kraftwerksliste);
     power=0;
     for i=1:n
-        p = Kraftwerksliste(1,i).Leistung_aktuell;
+        p = Kraftwerksliste(1,i).Leistung_aktuell();
         if (p > 0)
             power= power + p;
         end
@@ -684,7 +705,7 @@ function power = Netzausspeiseleistung_aktuell()
     [~,n]=size(Kraftwerksliste);
     power=0;
     for i=1:n
-        p = Kraftwerksliste(1,i).Leistung_aktuell;
+        p = Kraftwerksliste(1,i).Leistung_aktuell();
         if (p < 0)
             power= power + p;
         end
@@ -774,7 +795,7 @@ function power = Leitungen_Bemessungsleistung_verfuegbar_max()
     [~,n]=size(Leitungsliste);
     power=0;
     for i=1:n
-        p = Leitungsliste(1,i).Bemessungsleistung_gesamt;
+        p = Leitungsliste(1,i).Bemessungsleistung_gesamt();
         if (p > 0)
             power= power + p;
         end
@@ -789,7 +810,7 @@ function power = Leitungsleistung_vorwaerts_aktuell()
     power=0;
     for i=1:n
                                                         %if (Leitungsliste(1,i).Transportleistung > 0)
-        p = Leitungsliste(1,i).Transportleistung;
+        p = Leitungsliste(1,i).Transportleistung();
                                                         %end
         if (p > 0)
             power= power + p;
@@ -805,7 +826,7 @@ function power = Leitungsleistung_rueckwaerts_aktuell()
     [~,n]=size(Leitungsliste);
     power=0;
     for i=1:n
-        p = Leitungsliste(1,i).Transportleistung;
+        p = Leitungsliste(1,i).Transportleistung();
         if (p < 0)
             power= power + p;
         end
@@ -875,3 +896,13 @@ end
 
 
 % Funktionen für den Netzregler:
+function result = Leitungslastquadratsumme_berechnen() %sum_p_L0 berechnen (= Startsumme der quadrierten pL-Werte)
+    global Leitungsliste;
+    [~,l]=size(Leitungsliste);
+    sum=0;
+    for i=1:l 
+        Leitung=Leitungsliste(1,i);
+        sum=sum+(Leitung.p_L^2); 
+    end
+    result = sum;
+end

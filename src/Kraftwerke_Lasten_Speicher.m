@@ -84,7 +84,34 @@ classdef Kraftwerke_Lasten_Speicher < handle
             end
             %result = obj;
         end
-        
+        function result = Regelreserve_auf(obj)
+            if obj.R_N == 2
+                result = obj.x_Nmax - obj.x_N;
+            else
+                result = 0;
+            end
+        end
+        function result = Regelreserve_auf_KW(obj)
+            if obj.R_N == 2
+                result = obj.P_N * (obj.x_Nmax - obj.x_N);
+            else
+                result = 0;
+            end
+        end
+        function result = Regelreserve_ab(obj)
+            if obj.R_N == 2
+                result = obj.x_N - obj.x_Nmin;
+            else
+                result = 0;
+            end
+        end
+        function result = Regelreserve_ab_KW(obj)
+            if obj.R_N == 2
+                result = obj.P_N * (obj.x_N - obj.x_Nmin);
+            else
+                result = 0;
+            end
+        end
         function result =  Nennleistung_min(obj)
             result = obj.P_N*obj.x_Nmin;
         end   
