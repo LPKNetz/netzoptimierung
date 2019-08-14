@@ -63,6 +63,9 @@ classdef Kraftwerke_Lasten_Speicher < handle
         end
         function result = Zeit_setzen(obj,time)
             [m,~]=size(obj.Trend);
+            if m < 2
+                return;
+            end
             for i=2:m
                 if obj.Trend(i,1) > time
                     x = obj.Trend(i-1,2);
