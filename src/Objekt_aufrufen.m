@@ -28,12 +28,44 @@ Kraftwerksliste = Kraftwerke_initialisieren();
 Leitungsfluss_berechnen();
 Logfile_schreiben();
 
+%Ausgabe der Start-PL aller Leitungen zur Überprüfung:
+l=length(Leitungsliste);
+aktuell_PL=zeros(l,1);
+for i=1:l
+    Leitung=Leitungsliste(1,i);
+    aktuell_PL(i,1)=Leitung.p_L*Leitung.P_L;
+end
+aktuell_PL
 
 
-for i=1:10
+
+for i=1:20
     Netz_anregeln();
 end
 Grafik_plotten();
+Logfile_schreiben();
+
+
+
+%Ausgabe der letzten PL aller Leitungen zur Überprüfung:
+l=length(Leitungsliste);
+aktuell_PL=zeros(l,1);
+for i=1:l
+    Leitung=Leitungsliste(1,i);
+    aktuell_PL(i,1)=Leitung.p_L*Leitung.P_L;
+end
+aktuell_PL
+
+%Ausgabe der letzten PN aller KW zur Überprüfung:
+[~,m]=size(Kraftwerksliste);
+aktuell_PN=zeros(m,1);
+for i=1:m
+        Kraftwerk = Kraftwerksliste(1,i);
+        aktuell_PN(i,1)=Kraftwerk.x_N*Kraftwerk.P_N;
+end
+aktuell_PN
+
+
 
 
 %% 8. Time Sequencer
@@ -462,19 +494,18 @@ function Netz_anregeln() %% 7. Netz anregeln:
     %5. STOPP bei Abbruchbedingung (=wenn Veränderung zum vorherigen Ergebnis
     %   0,0001 (z.B.) nicht mehr unterschreitet 
 
+    
+    
+    
+    %1. GROSSER TEIL: STELLWERTE UM DELTA VERÄNDERN
 
     %Einstellungen:
     format long
-    tol = 1e-8;     %Definieren der Genauigkeit
-    maxstep = 20;   %Definieren des Abbruchkriteriums
-    a_k = 0.000001;      %Definieren der Schrittweite
-    c = 0.001;      %Definieren der Finiten Differenz für die Gradientbildung
+    a_k = 0.00001;      %Definieren der Schrittweite
+    c = 0.0000001;      %Definieren der Finiten Differenz für die Gradientbildung
 
 
-    %1. + 2. Startwerte festlegen für Startiteration und Umgebungswerte bilden (Verfahren der finiten Differenzen)
-
-
-    %pL0 - Start-vektor aus allen pLs der Leitungen machen:
+    %1. pL0 - Start-vektor aus allen pLs der Leitungen machen:
     [~,l]=size(Leitungsliste);
     pL0=zeros(l,1);
     for i=1:l 
@@ -482,56 +513,58 @@ function Netz_anregeln() %% 7. Netz anregeln:
         pL0(i,1)=Leitung.p_L;
     end
 
-    %X0 - Start-stellwertvektor aus allen xNs der Kraftwerke machen
-
-    
-    
-
-    
-    %3. Gradient bilden für Startiteration
+    %2. Umgebungswerte und Gradient bilden:
     [~,m]=size(Kraftwerksliste);
     for i=1:m
         Kraftwerk = Kraftwerksliste(1,i);
-        x0 = Kraftwerk.x_N;
-        Kraftwerk.x_N = Kraftwerk.x_N + c;
-        sum0 = Leitungslastquadratsumme_berechnen();
-        Leitungsfluss_berechnen();
-        sum1 = Leitungslastquadratsumme_berechnen();
-        Kraftwerk.x_N = x0;
-        Gradient(i,1)= (sum1-sum0)/c ; % Differenz aus Fehlerquadratsumme vor und nach der Leistungsflussberechnung 
+        x0 = Kraftwerk.x_N;  %x0 - Start-stellwertvektor aus allen xNs der Kraftwerke machen
+        Kraftwerk.x_N = Kraftwerk.x_N + c; %auf x0 - Vektor die finite Differenz c aufaddieren 
+        sum0 = Leitungslastquadratsumme_berechnen(); %Funktion quadriert jede einzelne Leitungslast (die initialen) und summiert alle
+        Leitungsfluss_berechnen(); %berechnet aktuellen Lastfluss durch Leitungen
+        sum1 = Leitungslastquadratsumme_berechnen(); %quadriert die neu berechneten Leitungslasten und summiert alle
+        Kraftwerk.x_N = x0; %setzt alle x_N auf die ursprünglichen Werte (=Start-stellwertvektor) zurück
+        Gradient(i,1)= (sum1-sum0)/c ; % Differenz aus Fehlerquadratsumme vor und nach der Leistungsflussberechnung durch die finite Differenz
     end
+    Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
     
-    dx_N = -Gradient * a_k;
+    %3. Delta bilden:
+    dx_N = -Gradient * a_k; %Delta-Vektor aus Gradient in entgegengesetzte Richtung um die Schrittweite a_k entlang gehen
     
-    for i=1:m
+    %4. Stellwert der regelbare KW um Delta-Vektoreintrag verstellen: 
+    for i=1:m %Addiert auf alle regelbaren KW den jeweiligen Eintrag aus dem Delta-Vektor:
         Kraftwerk = Kraftwerksliste(1,i);
-        if Kraftwerk.R_N == 2
-            Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + dx_N(i,1));
+        if Kraftwerk.R_N == 2  %Alle KW durchgehen und wenn eins, ein konv. regelbares ist, dann jeweiligen Eintrag aus Delta-Vektor auf den Stellwert addieren
+            Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + dx_N(i,1)); %Funktion setzt x_N und limitet noch, falls das gegebene x_N größer oder kleiner ist als das zulässige x_Nmax oder x_Nmin
         end
     end
-    Logfile_schreiben();
+    Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
+    
+    %Zur Überprüfung:
+    %Logfile_schreiben();
     %Grafik_plotten();
     
     
     
-    % AUF - / AB - Regelung in Abhängigkeit von der Netzunterdeckung:
-    NU = Netzunterdeckung_aktuell();
+    % 2. GROSSER TEIL: REGELUNG
+    
+    %Regelreserve nach oben/unten in Abhängigkeit von positiver/negativer NU berechnen:
+    NU = Netzunterdeckung_aktuell(); %berechnet aktuelle Netzunterdeckung
     [~,m]=size(Kraftwerksliste);
     Sum_Reserve_KW = 0;
-    if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden
+    if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden, wenn die NU größer 0 ist (=Mangel)
         for i=1:m
             Kraftwerk = Kraftwerksliste(1,i);
-            Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_auf_KW();
+            Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_auf_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmax für alle KW
         end
-    else  % Kraftwerksverbund muss abgeregelt werden
+    else  % Kraftwerksverbund muss abgeregelt werden, wenn die NU kleiner 0 ist (=Überschuss)
         for i=1:m
             Kraftwerk = Kraftwerksliste(1,i);
-            Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_ab_KW();
+            Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_ab_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmin für alle KW
         end
     end
-    Anteil_NU = NU/Sum_Reserve_KW;
-    
-    % Anteil auf Regelreserve aufschalten:
+    Anteil_NU = NU/Sum_Reserve_KW; %berechnet das Verhältnis aus Netzunterdeckung und Gesamtreserve
+     
+    %AUF - / AB - Regelung der Stellwerte: 
     [~,m]=size(Kraftwerksliste);   
     for i=1:m
         Kraftwerk = Kraftwerksliste(1,i);
@@ -540,9 +573,10 @@ function Netz_anregeln() %% 7. Netz anregeln:
         else  % Kraftwerksverbund muss abgeregelt werden
             RR = Kraftwerk.Regelreserve_ab();
         end
-        Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + RR * Anteil_NU);
+        Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + RR * Anteil_NU); %Anteil auf Regelreserve aufschalten und um das den Stellwert verändern (für alle KW)
     end
-    Logfile_schreiben();
+    Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
+    %Logfile_schreiben();
 end
 
 
@@ -896,7 +930,7 @@ end
 
 
 % Funktionen für den Netzregler:
-function result = Leitungslastquadratsumme_berechnen() %sum_p_L0 berechnen (= Startsumme der quadrierten pL-Werte)
+function result = Leitungslastquadratsumme_berechnen() %sum_p_L berechnen (= Summe der quadrierten pL-Werte)
     global Leitungsliste;
     [~,l]=size(Leitungsliste);
     sum=0;
