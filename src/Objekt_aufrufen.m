@@ -1,5 +1,6 @@
 clc, clear, close all 
 feature('DefaultCharacterSet','UTF-8');
+warning('off','all');
 %% 0. Logfile anlegen:
 global Logfile;
 Logfile=fopen('../log/Logfile.txt', 'w');
@@ -18,6 +19,9 @@ end
 global figureNum;
 figureNum = 0;
 
+global animationWriter;
+animationWriter = initAnimation('../log/Grafik/animation.avi', 2);
+
 global Knotenliste;
 Knotenliste = Knoten_initialisieren();
 
@@ -34,7 +38,23 @@ Logfile_schreiben();
 Netz_anregeln()
 Grafik_plotten();
 Logfile_schreiben();
-for t=1:96 % 1 Tag berechnen mit 96 Zeitschlitzen a 15 min
+zeitschlitze = 96;  % Anzahl zu berechnender Zeitschlitze
+dateStart = datetime('now');
+for t=1:zeitschlitze % 1 Tag berechnen mit 96 Zeitschlitzen a 15 min
+    dateNow = datetime('now');
+    laufzeit = dateNow - dateStart;
+    gesamtzeit = laufzeit * zeitschlitze / t;
+    restzeit = gesamtzeit - laufzeit;
+    laufzeitstring = datestr(laufzeit, 'HH:MM:SS');
+    restzeitstring = datestr(restzeit, 'HH:MM:SS');
+    gesamtzeitstring = datestr(gesamtzeit, 'HH:MM:SS');
+    fprintf("Berechne Schritt %i von %i. Laufzeit: %s Restzeit: %s Gesamtzeit: %s",...
+        t, zeitschlitze, laufzeitstring, restzeitstring, gesamtzeitstring);
+    clear laufzeit
+    clear gesamtzeit
+    clear restzeit
+    clear restzeitstring
+    
     d = datetime('04-Jul-2019 00:50:00');
     unixtimestart = posixtime(d)-7200; %  7200 abziehen um von +2h GMT zu UTC zu konvertieren
     time = unixtimestart + t*15*60;
@@ -42,15 +62,18 @@ for t=1:96 % 1 Tag berechnen mit 96 Zeitschlitzen a 15 min
     Netz_anregeln();
     Grafik_plotten();
     Logfile_schreiben();
+    clc;
 end
 clear time;
 
+
+%% Animation beenden
+finishAnimation(animationWriter);
 
 %% Logfile schlieﬂen
 if Logfile ~= 1
     fclose(Logfile);
 end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -357,6 +380,7 @@ function Grafik_plotten() %% 6. Grafik erstellen
     global Leitungsliste;
     global Kraftwerksliste;
     global figureNum;
+    global animationWriter;
     figureNum = figureNum + 1;
     % Check version
     if verLessThan('matlab','8.6')
@@ -451,8 +475,10 @@ function Grafik_plotten() %% 6. Grafik erstellen
     %set(gca,'XTick',[],'YTick',[])
     % Add title
     %title('Leitungsfluss')
-    filename = sprintf('../log/Grafik/fig_%06i.png', figureNum);
-    print(fig,'-dpng', filename);
+    frame = getframe(gcf);
+    addFrame(animationWriter, frame);
+    %filename = sprintf('../log/Grafik/fig_%06i.png', figureNum);
+    %print(fig,'-dpng', filename);
     close all
     clear fig
     clear G
@@ -692,7 +718,29 @@ function plotKraftwerk(x, y, Kraftwerk)
     clear x_offset
     clear Kraftwerkstext
 end
-
+function result = initAnimation(filename, framerate)
+    [~,~,ext] = fileparts(filename);
+    format = '';
+    switch (ext)
+        case '.mp4'
+            format = 'MPEG-4';
+        case '.avi'
+            format = 'Motion JPEG AVI';
+        case '.mj2'
+            format = 'Motion JPEG 2000';
+    end
+    writer = VideoWriter(filename, format);
+    writer.FrameRate = framerate;
+    open(writer);
+    result = writer;
+    clear format
+end
+function addFrame(writer, image)
+    writeVideo(writer, image);
+end
+function finishAnimation(writer)
+    close(writer);
+end
 
 %Rest:
 
