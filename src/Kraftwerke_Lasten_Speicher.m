@@ -25,6 +25,8 @@ classdef Kraftwerke_Lasten_Speicher < handle
                 o_NB  		% Erlaube Vorgabe Bunkergröße  [bool]
                 TQ          % Pfad Trendquelle (Kurven)
                 Trend       % Trend (=Windgeschwindigkeit oder Solare Strahlung oder hydro etc.)
+                t_alt       % Letzer Zeitstempel
+                delta_t_alt % Letzte Zeitschlitzdauer
     end
     
     methods (Access = public)
@@ -61,7 +63,13 @@ classdef Kraftwerke_Lasten_Speicher < handle
                 result = C;
             end
         end
+        %% Bei Speichern ist grundsätzlich zuerst die Zeit zu setzen, bevor die 
+        %% Leistung verstellt wird.
         function result = Zeit_setzen(obj,time)
+            if obj.istSpeicher()
+                obj.Speicher_rechnen(time);
+            end
+            
             [m,~]=size(obj.Trend);
             if m < 2
                 return;
@@ -90,30 +98,32 @@ classdef Kraftwerke_Lasten_Speicher < handle
         function result = Regelreserve_auf(obj)
             if obj.R_N == 2
                 result = obj.x_Nmax - obj.x_N;
+                if (obj.istSpeicher())
+                    if (obj.b_N >= 1)
+                        result = 0;
+                    end
+                end
             else
                 result = 0;
             end
         end
         function result = Regelreserve_auf_KW(obj)
-            if obj.R_N == 2
-                result = obj.P_N * (obj.x_Nmax - obj.x_N);
-            else
-                result = 0;
-            end
+            result = obj.P_N * obj.Regelreserve_auf();
         end
         function result = Regelreserve_ab(obj)
             if obj.R_N == 2
                 result = obj.x_N - obj.x_Nmin;
+                if (obj.istSpeicher())
+                    if (obj.b_N <= 0)
+                        result = 0;
+                    end
+                end
             else
                 result = 0;
             end
         end
         function result = Regelreserve_ab_KW(obj)
-            if obj.R_N == 2
-                result = obj.P_N * (obj.x_N - obj.x_Nmin);
-            else
-                result = 0;
-            end
+            result = obj.P_N * obj.Regelreserve_ab();
         end
         function result =  Nennleistung_min(obj)
             result = obj.P_N*obj.x_Nmin;
@@ -131,10 +141,37 @@ classdef Kraftwerke_Lasten_Speicher < handle
             result = false;
             if (obj.x_N < obj.x_Nmin) || (obj.x_N > obj.x_Nmax)
                 result = true;
+            elseif (obj.b_N < 0 || obj.b_N > 1)
+                result = true;
             end
 
 
         %hier kann man alle möglichen Störfälle einbauen
         end 
+        function result = istSpeicher(obj)
+            if (obj.x_Nmin < 0.001 && obj.B_N > 0.001)
+                result = true;
+            else
+                result = false;
+            end
+        end
     end    
+    
+    methods (Access = private)
+        function Speicher_rechnen(obj, time)
+            if (obj.t_alt == 0)
+                obj.t_alt = time;
+                return;
+            end
+            
+            Zeitschlitzdauer = time - obj.t_alt;    % Sekunden
+            obj.delta_t_alt = Zeitschlitzdauer;
+            delta_kWh = obj.Leistung_aktuell() * Zeitschlitzdauer / 3600;
+            
+            obj.b_N = obj.b_N + (delta_kWh / obj.B_N);
+            % todo: Nachdenken, wie Füllstände begrenzt werden
+            
+            obj.t_alt = time;
+        end
+    end
 end
