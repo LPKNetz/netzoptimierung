@@ -15,6 +15,8 @@ end
         
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+global figureNum;
+figureNum = 0;
 
 global Knotenliste;
 Knotenliste = Knoten_initialisieren();
@@ -344,7 +346,9 @@ function Logfile_schreiben() %% 5. Logfile schreiben
     datetime(time, 'convertfrom','posixtime');
 
     %Kraftwerksliste(1,10).Zeit_setzen(1562224805)   % TEST
-
+    clear fname
+    clear time
+    clear val
 end
 
 %Grafik plotten:
@@ -352,13 +356,15 @@ function Grafik_plotten() %% 6. Grafik erstellen
     global Knotenliste;
     global Leitungsliste;
     global Kraftwerksliste;
+    global figureNum;
+    figureNum = figureNum + 1;
     % Check version
     if verLessThan('matlab','8.6')
         error('digraph is available in R2015b or newer.')
     end
 
-    % Create a directed graph object using the digraph function
-    figure('units','normalized','position',[0,0,1,1]);
+    % Create a directed graph object using the digraph function  
+    fig = figure('Visible', 'off', 'units','normalized','position',[0,0,1,1]);
     hold on;
     axis ([30 60 20 30]);
     pbaspect([1 1 1])
@@ -445,6 +451,26 @@ function Grafik_plotten() %% 6. Grafik erstellen
     %set(gca,'XTick',[],'YTick',[])
     % Add title
     %title('Leitungsfluss')
+    filename = sprintf('../log/Grafik/fig_%06i.png', figureNum);
+    print(fig,'-dpng', filename);
+    close all
+    clear fig
+    clear G
+    clear p
+    clear p_norm
+    clear s
+    clear e
+    clear Long
+    clear Lat
+    clear Knotentext
+    clear Knoten
+    clear c
+    clear l
+    clear m
+    clear k
+    clear Kraftwerk
+    clear x
+    clear y
 end
 
 %Netz anregeln:
@@ -546,6 +572,21 @@ function Netz_anregeln() %% 7. Netz anregeln:
         Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
         %Logfile_schreiben();
     end
+    clear sum0
+    clear sum1
+    clear x0
+    clear pL0
+    clear dx_N
+    clear Kraftwerk
+    clear Sum_Reserve_KW
+    clear Anteil_NU
+    clear RR
+    clear m
+    clear l
+    clear Gradient
+    clear NU
+    clear a_k
+    clear c
 end
 
 %Time Sequencer:
@@ -556,6 +597,10 @@ function Zeit_setzen(time)
         Kraftwerk = Kraftwerksliste(1,i);
         Kraftwerk.Zeit_setzen(time);
     end
+    
+    clear m
+    clear i
+    clear Kraftwerk
 end
 
 
@@ -634,6 +679,18 @@ function plotKraftwerk(x, y, Kraftwerk)
         'HorizontalAlignment', 'Right',...
         'VerticalAlignment', 'bottom',...
         'FontName', 'FixedWidth');
+    
+    clear n
+    clear P
+    clear p_norm
+    clear Bunkergroesse
+    clear p
+    clear LineColor
+    clear LineStyle
+    clear typ
+    clear y_offset
+    clear x_offset
+    clear Kraftwerkstext
 end
 
 
@@ -783,6 +840,7 @@ function pp = Nennleistung_zweitgroesste_Einheit()
     end
     clear i
     clear n
+    clear p
 end
 function ok = Einfachredundanz_Kraftwerke_ok
    if Kraftwerksreserve_aktuell() > Nennleistung_groesste_Einheit()
@@ -901,6 +959,7 @@ function pp = Bemessungsleistung_zweitgroesste_Leitung()
     end
     clear i
     clear n
+    clear p
 end
 
 
@@ -913,6 +972,8 @@ function result = Leitungslastquadratsumme_berechnen() %sum_p_L berechnen (= Sum
     for i=1:l 
         Leitung=Leitungsliste(1,i);
         sum=sum+(Leitung.p_L^2); 
+        clear Leitung
     end
     result = sum;
+    clear sum
 end
