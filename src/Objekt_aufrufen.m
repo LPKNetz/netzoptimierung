@@ -78,7 +78,6 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-
 %% Funktionen:
 
 %Initialisieren:
@@ -477,8 +476,8 @@ function Grafik_plotten() %% 6. Grafik erstellen
     %title('Leitungsfluss')
     frame = getframe(gcf);
     addFrame(animationWriter, frame);
-    %filename = sprintf('../log/Grafik/fig_%06i.png', figureNum);
-    %print(fig,'-dpng', filename);
+    filename = sprintf('../log/Grafik/fig_%06i.png', figureNum);
+    print(fig,'-dpng', filename);
     close all
     clear fig
     clear G
@@ -523,29 +522,64 @@ function Netz_anregeln() %% 7. Netz anregeln:
     a_k = 0.00001;      %Definieren der Schrittweite
     c = 0.0000001;      %Definieren der Finiten Differenz für die Gradientbildung
 
-    for i=1:20
+    for loop=1:20
 
         %1. pL0 - Start-vektor aus allen pLs der Leitungen machen:
-        [~,l]=size(Leitungsliste);
-        pL0=zeros(l,1);
-        for i=1:l 
-            Leitung=Leitungsliste(1,i);
-            pL0(i,1)=Leitung.p_L;
+%        [~,l]=size(Leitungsliste);
+%        pL0=zeros(l,1);
+%        for i=1:l 
+%            Leitung=Leitungsliste(1,i);
+%            pL0(i,1)=Leitung.p_L;
+%        end
+    
+        %1. Netzunterdeckung auf 0 bringen, falls kurz zuvor
+        %Kraftwerksausfall
+                %Regelreserve nach oben/unten in Abhängigkeit von positiver/negativer NU berechnen:
+        NU = Netzunterdeckung_aktuell(); %berechnet aktuelle Netzunterdeckung
+        [~,m]=size(Kraftwerksliste);
+        Sum_Reserve_KW = 0;
+        if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden, wenn die NU größer 0 ist (=Mangel)
+            for i=1:m
+                Kraftwerk = Kraftwerksliste(1,i);
+                Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_auf_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmax für alle KW
+            % to do: Reserve muss für Speicher korrigiert werden
+            end
+        else  % Kraftwerksverbund muss abgeregelt werden, wenn die NU kleiner 0 ist (=Überschuss)
+            for i=1:m
+                Kraftwerk = Kraftwerksliste(1,i);
+                Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_ab_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmin für alle KW
+            end
         end
+        Anteil_NU = NU/Sum_Reserve_KW; %berechnet das Verhältnis aus Netzunterdeckung und Gesamtreserve
+
+        %AUF - / AB - Regelung der Stellwerte: 
+        [~,m]=size(Kraftwerksliste);   
+        for i=1:m
+            Kraftwerk = Kraftwerksliste(1,i);
+            if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden
+                RR = Kraftwerk.Regelreserve_auf();
+            else  % Kraftwerksverbund muss abgeregelt werden
+                RR = Kraftwerk.Regelreserve_ab();
+            end
+            Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + RR * Anteil_NU); %Anteil auf Regelreserve aufschalten und um das den Stellwert verändern (für alle KW)
+        end
+        Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
+        %Logfile_schreiben();
+
 
         %2. Umgebungswerte und Gradient bilden:
         [~,m]=size(Kraftwerksliste);
         for i=1:m
             Kraftwerk = Kraftwerksliste(1,i);
-            x0 = Kraftwerk.x_N;  %x0 - Start-stellwertvektor aus allen xNs der Kraftwerke machen
+            x0 = Kraftwerk.x_N;  %x0 - Start-stellwert 
             Kraftwerk.x_N = Kraftwerk.x_N + c; %auf x0 - Vektor die finite Differenz c aufaddieren 
             sum0 = Leitungslastquadratsumme_berechnen(); %Funktion quadriert jede einzelne Leitungslast (die initialen) und summiert alle
             Leitungsfluss_berechnen(); %berechnet aktuellen Lastfluss durch Leitungen
             sum1 = Leitungslastquadratsumme_berechnen(); %quadriert die neu berechneten Leitungslasten und summiert alle
-            Kraftwerk.x_N = x0; %setzt alle x_N auf die ursprünglichen Werte (=Start-stellwertvektor) zurück
+            Kraftwerk.x_N = x0; %setzt x_N auf die ursprünglichen Werte (=Start-stellwert) zurück
             Gradient(i,1)= (sum1-sum0)/c ; % Differenz aus Fehlerquadratsumme vor und nach der Leistungsflussberechnung durch die finite Differenz
         end
-        Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
+        %Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
 
         %3. Delta bilden:
         dx_N = -Gradient * a_k; %Delta-Vektor aus Gradient in entgegengesetzte Richtung um die Schrittweite a_k entlang gehen
@@ -557,15 +591,13 @@ function Netz_anregeln() %% 7. Netz anregeln:
                 Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + dx_N(i,1)); %Funktion setzt x_N und limitet noch, falls das gegebene x_N größer oder kleiner ist als das zulässige x_Nmax oder x_Nmin
             end
         end
-        Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
+        %Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
 
         %Zur Überprüfung:
         %Logfile_schreiben();
         %Grafik_plotten();
 
-
-
-        % 2. GROSSER TEIL: REGELUNG
+        %5. Netzunterdeckung nach Lastausgleich wieder auf 0 bringen
 
         %Regelreserve nach oben/unten in Abhängigkeit von positiver/negativer NU berechnen:
         NU = Netzunterdeckung_aktuell(); %berechnet aktuelle Netzunterdeckung
@@ -575,6 +607,7 @@ function Netz_anregeln() %% 7. Netz anregeln:
             for i=1:m
                 Kraftwerk = Kraftwerksliste(1,i);
                 Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_auf_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmax für alle KW
+            % to do: Reserve muss für Speicher korrigiert werden
             end
         else  % Kraftwerksverbund muss abgeregelt werden, wenn die NU kleiner 0 ist (=Überschuss)
             for i=1:m
@@ -951,9 +984,6 @@ function power = Leitungsleistung_rueckwaerts_aktuell()
     clear i
     clear n
 end
-
- %  !!  Netzunterdeckung  ??
-
 function s = Anzahl_Leitungs_Stoerfaelle()
     global Leitungsliste
     [~,n]=size(Leitungsliste);

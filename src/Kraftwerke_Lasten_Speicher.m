@@ -48,6 +48,8 @@ classdef Kraftwerke_Lasten_Speicher < handle
              obj.o_MK = oMK{1,1};
              obj.o_NB = oNB{1,1};  
              obj.TQ = tq{1,1};
+             
+             obj.t_alt = 0;
               
              if obj.R_N == 3 || obj.R_N == 4
                  obj.Trend=obj.Trend_laden();
@@ -63,8 +65,7 @@ classdef Kraftwerke_Lasten_Speicher < handle
                 result = C;
             end
         end
-        %% Bei Speichern ist grundsätzlich zuerst die Zeit zu setzen, bevor die 
-        %% Leistung verstellt wird.
+        % Bei Speichern ist grundsätzlich zuerst die Zeit zu setzen, bevor die Leistung verstellt wird.
         function result = Zeit_setzen(obj,time)
             if obj.istSpeicher()
                 obj.Speicher_rechnen(time);
@@ -93,30 +94,31 @@ classdef Kraftwerke_Lasten_Speicher < handle
             else
                 obj.x_N = x_N;
             end
+            if obj.istSpeicher() && obj.b_N >= 1 && obj.x_N <= 0
+                obj.x_N = 0;
+            elseif obj.istSpeicher() && obj.b_N <= 0 && obj.x_N >= 0
+                obj.x_N = 0;
+            end
             %result = obj;
         end
         function result = Regelreserve_auf(obj)
             if obj.R_N == 2
                 result = obj.x_Nmax - obj.x_N;
-                if (obj.istSpeicher())
-                    if (obj.b_N >= 1)
-                        result = 0;
-                    end
+                if obj.istSpeicher() && obj.b_N <= 0
+                    result = 0;
                 end
             else
                 result = 0;
             end
         end
-        function result = Regelreserve_auf_KW(obj)
+        function result = Regelreserve_auf_KW(obj) % ENTLADEN
             result = obj.P_N * obj.Regelreserve_auf();
         end
-        function result = Regelreserve_ab(obj)
+        function result = Regelreserve_ab(obj) % LADEN
             if obj.R_N == 2
                 result = obj.x_N - obj.x_Nmin;
-                if (obj.istSpeicher())
-                    if (obj.b_N <= 0)
-                        result = 0;
-                    end
+                if obj.istSpeicher() && obj.b_N >= 1
+                    result = 0;
                 end
             else
                 result = 0;
@@ -125,23 +127,28 @@ classdef Kraftwerke_Lasten_Speicher < handle
         function result = Regelreserve_ab_KW(obj)
             result = obj.P_N * obj.Regelreserve_ab();
         end
-        function result =  Nennleistung_min(obj)
+        function result = Nennleistung_min(obj)
             result = obj.P_N*obj.x_Nmin;
         end   
-        function result =  Nennleistung_max(obj)
+        function result = Nennleistung_max(obj)
             result = obj.P_N*obj.x_Nmax;
         end   
-        function result =  Leistung_aktuell(obj)
+        function result = Leistung_aktuell(obj)
             result = obj.P_N*obj.x_N;
+            if obj.istSpeicher() && obj.b_N >= 1 && obj.x_N <= 0
+                result = 0;
+            elseif obj.istSpeicher() && obj.b_N <= 0 && obj.x_N >= 0
+                result = 0;
+            end
         end
         function result = Netzverknuepfungspunkt(obj)
             result = obj.K;
         end
-        function result =  gestoert(obj)
+        function result = gestoert(obj)
             result = false;
             if (obj.x_N < obj.x_Nmin) || (obj.x_N > obj.x_Nmax)
                 result = true;
-            elseif (obj.b_N < 0 || obj.b_N > 1)
+            elseif ((obj.b_N < 0) || (obj.b_N > 1))
                 result = true;
             end
 
@@ -149,7 +156,7 @@ classdef Kraftwerke_Lasten_Speicher < handle
         %hier kann man alle möglichen Störfälle einbauen
         end 
         function result = istSpeicher(obj)
-            if (obj.x_Nmin < 0.001 && obj.B_N > 0.001)
+            if obj.x_Nmin < 0.001 && obj.B_N > 0.001
                 result = true;
             else
                 result = false;
@@ -166,7 +173,7 @@ classdef Kraftwerke_Lasten_Speicher < handle
             
             Zeitschlitzdauer = time - obj.t_alt;    % Sekunden
             obj.delta_t_alt = Zeitschlitzdauer;
-            delta_kWh = obj.Leistung_aktuell() * Zeitschlitzdauer / 3600;
+            delta_kWh = -obj.Leistung_aktuell() * Zeitschlitzdauer / 3600;
             
             obj.b_N = obj.b_N + (delta_kWh / obj.B_N);
             % todo: Nachdenken, wie Füllstände begrenzt werden
