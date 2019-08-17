@@ -51,9 +51,14 @@ classdef Kraftwerke_Lasten_Speicher < handle
              
              obj.t_alt = 0;
               
-             if obj.R_N == 3 || obj.R_N == 4
+             if obj.R_N == 3 %|| obj.R_N == 4
                  obj.Trend=obj.Trend_laden();
              end
+             
+             if obj.R_N == 4 
+                 obj.Trend=obj.Trend_laden_2();
+             end
+             
         end
         function result = Trend_laden(obj)
             val = jsondecode(fileread(fullfile('../data/',obj.TQ{1,1})));
@@ -65,6 +70,12 @@ classdef Kraftwerke_Lasten_Speicher < handle
                 result = C;
             end
         end
+        function result = Trend_laden_2(obj)
+            D = importdata(fullfile('../data/',obj.TQ{1,1}));
+                result = D;
+        end
+        
+        
         % Bei Speichern ist grundsätzlich zuerst die Zeit zu setzen, bevor die Leistung verstellt wird.
         function result = Zeit_setzen(obj,time)
             if obj.istSpeicher()

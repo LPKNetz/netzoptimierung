@@ -40,6 +40,10 @@ Grafik_plotten();
 Logfile_schreiben();
 zeitschlitze = 96;  % Anzahl zu berechnender Zeitschlitze
 dateStart = datetime('now');
+
+    u=length(Leitungsliste);
+    maxpowerflow=zeros(u,1);
+
 for t=1:zeitschlitze % 1 Tag berechnen mit 96 Zeitschlitzen a 15 min
     dateNow = datetime('now');
     laufzeit = dateNow - dateStart;
@@ -55,6 +59,16 @@ for t=1:zeitschlitze % 1 Tag berechnen mit 96 Zeitschlitzen a 15 min
     clear restzeit
     clear restzeitstring
     
+
+    for f=1:u
+        Leitung=Leitungsliste(1,f);
+        %Leitung.p_L*Leitung.P_L;
+        %maxpower;
+        if (abs(Leitung.p_L*Leitung.P_L)) > maxpowerflow(f,1)
+            maxpowerflow(f,1)=abs(Leitung.p_L*Leitung.P_L);
+        end
+    end
+    
     d = datetime('04-Jul-2019 00:50:00');
     unixtimestart = posixtime(d)-7200; %  7200 abziehen um von +2h GMT zu UTC zu konvertieren
     time = unixtimestart + t*15*60;
@@ -63,7 +77,22 @@ for t=1:zeitschlitze % 1 Tag berechnen mit 96 Zeitschlitzen a 15 min
     Grafik_plotten();
     Logfile_schreiben();
     clc;
+    
+    
 end
+
+Bemessungsleistung=zeros(u,1);
+for i=1:u %Bemessungsleistung aus Originaltabelle / Liste holen
+    Leitung=Leitungsliste(1,i);
+    Bemessungsleistung(i,1)=Leitung.P_L;
+end
+
+maxpowerflow = round(maxpowerflow.*100)/100
+delta_mpf_PL = round(((maxpowerflow./Bemessungsleistung)-1).*100)/100
+Leitungsauslastung_errechnet = round((maxpowerflow./Bemessungsleistung).*100)/100
+
+
+
 clear time;
 
 
@@ -367,7 +396,7 @@ function Logfile_schreiben() %% 5. Logfile schreiben
 
     datetime(time, 'convertfrom','posixtime');
 
-    %Kraftwerksliste(1,10).Zeit_setzen(1562224805)   % TEST
+    %Kraftwerksliste(1,11).Zeit_setzen(1.562265900000000e+09)   % TEST
     clear fname
     clear time
     clear val
