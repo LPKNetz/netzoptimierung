@@ -50,6 +50,7 @@ classdef Kraftwerke_Lasten_Speicher < handle
              obj.TQ = tq{1,1};
              
              obj.t_alt = 0;
+             obj.delta_t_alt = 15*60;
               
              if obj.R_N == 3 %|| obj.R_N == 4
                  obj.Trend=obj.Trend_laden();

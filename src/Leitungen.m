@@ -29,6 +29,7 @@ classdef Leitungen < handle
             obj.o_KL = oKL;
             obj.o_PL = oPL;
             obj.t_alt = 0;
+            obj.delta_t_alt = 15*60;
         end
         function result =  Transportleistung(obj)
             result = obj.p_L*obj.P_L;

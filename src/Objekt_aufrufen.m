@@ -37,6 +37,7 @@ Leitungsfluss_berechnen();
 Logfile_schreiben();
 if (Netz_anregeln() == false)
     fprintf("\nNetz in Grundkonfiguration nicht regelbar!\n");
+    return
 end
 Grafik_plotten();
 Logfile_schreiben();
@@ -71,11 +72,11 @@ for t=1:zeitschlitze % 1 Tag berechnen mit 96 Zeitschlitzen a 15 min
         fprintf("\nNetz im laufenden Betrieb nicht regelbar!\n");
         break;
     end
-    Tageskosten = Tageskosten + Netzkosten_berechnen();
+    Tageskosten = Tageskosten + Netzkosten_berechnen()
+    
     Grafik_plotten();
     Logfile_schreiben();
     clc;
-    
     for f=1:u
         Leitung=Leitungsliste(1,f);
         %Leitung.p_L*Leitung.P_L;
@@ -1157,8 +1158,11 @@ function cost = Netzkosten_berechnen()
         cv = cv + Knoten.VariableKosten();
     end
     CK = ck + cv;
-    cost = CL + CN + CK;
+    cost = CL + CN + CK
 end
+
+
+
 
 % Funktionen für den Netzregler:
 function result = Leitungslastquadratsumme_berechnen() %sum_p_L berechnen (= Summe der quadrierten pL-Werte)

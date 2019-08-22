@@ -21,6 +21,7 @@ classdef Knoten < handle
             obj.C_K = CK;
             obj.o_PK = oPK;
             obj.t_alt = 0;
+            obj.delta_t_alt = 15*60;
         end
         
         
