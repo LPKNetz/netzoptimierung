@@ -74,6 +74,12 @@ classdef Kraftwerke_Lasten_Speicher < handle
             D = importdata(fullfile('../data/',obj.TQ{1,1}));
                 result = D;
         end
+        function result = Fixkosten(obj)
+            result = obj.delta_t_alt * (obj.C_N/(8760*3600));  % liefert ?/Zeitschlitz
+        end
+        function result = VariableKosten(obj)
+            result = obj.delta_t_alt * abs(obj.Leistung_aktuell()) * obj.c_N/3600; % liefert ?/Zeitschlitz
+        end
         
         
         % Bei Speichern ist grundsätzlich zuerst die Zeit zu setzen, bevor die Leistung verstellt wird.

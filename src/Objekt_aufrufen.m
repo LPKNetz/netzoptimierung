@@ -35,14 +35,17 @@ Kraftwerksliste = Kraftwerke_initialisieren();
 %% 1. Programm
 Leitungsfluss_berechnen();
 Logfile_schreiben();
-Netz_anregeln()
+if (Netz_anregeln() == false)
+    fprintf("\nNetz in Grundkonfiguration nicht regelbar!\n");
+end
 Grafik_plotten();
 Logfile_schreiben();
 zeitschlitze = 96;  % Anzahl zu berechnender Zeitschlitze
 dateStart = datetime('now');
 
-    u=length(Leitungsliste);
-    maxpowerflow=zeros(u,1);
+u=length(Leitungsliste);
+maxpowerflow=zeros(u,1);
+Tageskosten = 0;
 
 for t=1:zeitschlitze % 1 Tag berechnen mit 96 Zeitschlitzen a 15 min
     dateNow = datetime('now');
@@ -59,7 +62,20 @@ for t=1:zeitschlitze % 1 Tag berechnen mit 96 Zeitschlitzen a 15 min
     clear restzeit
     clear restzeitstring
     
-
+    
+    d = datetime('04-Jul-2019 00:50:00');
+    unixtimestart = posixtime(d)-7200; %  7200 abziehen um von +2h GMT zu UTC zu konvertieren
+    time = unixtimestart + t*15*60;
+    Zeit_setzen(time);
+    if (Netz_anregeln() == false)
+        fprintf("\nNetz im laufenden Betrieb nicht regelbar!\n");
+        break;
+    end
+    Tageskosten = Tageskosten + Netzkosten_berechnen();
+    Grafik_plotten();
+    Logfile_schreiben();
+    clc;
+    
     for f=1:u
         Leitung=Leitungsliste(1,f);
         %Leitung.p_L*Leitung.P_L;
@@ -68,17 +84,6 @@ for t=1:zeitschlitze % 1 Tag berechnen mit 96 Zeitschlitzen a 15 min
             maxpowerflow(f,1)=abs(Leitung.p_L*Leitung.P_L);
         end
     end
-    
-    d = datetime('04-Jul-2019 00:50:00');
-    unixtimestart = posixtime(d)-7200; %  7200 abziehen um von +2h GMT zu UTC zu konvertieren
-    time = unixtimestart + t*15*60;
-    Zeit_setzen(time);
-    Netz_anregeln();
-    Grafik_plotten();
-    Logfile_schreiben();
-    clc;
-    
-    
 end
 
 Bemessungsleistung=zeros(u,1);
@@ -87,13 +92,17 @@ for i=1:u %Bemessungsleistung aus Originaltabelle / Liste holen
     Bemessungsleistung(i,1)=Leitung.P_L;
 end
 
-maxpowerflow = round(maxpowerflow.*100)/100
-delta_mpf_PL = round(((maxpowerflow./Bemessungsleistung)-1).*100)/100
-Leitungsauslastung_errechnet = round((maxpowerflow./Bemessungsleistung).*100)/100
-
+maxpowerflow
+delta_mpf_PL = (maxpowerflow./Bemessungsleistung)-1
+Leitungsauslastung_errechnet = maxpowerflow./Bemessungsleistung
+Tageskosten
 
 
 clear time;
+
+%% 2.Optimierer
+
+
 
 
 %% Animation beenden
@@ -253,6 +262,7 @@ function Leitungsfluss_berechnen() %% 4. Netztabellen einlesen, Netzmatrizen ers
 
     %Potentialvektor erstellen:
     Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
+
     clear Netzmatrix_Leitungen
     clear Leistungsvektor
 
@@ -528,7 +538,7 @@ function Grafik_plotten() %% 6. Grafik erstellen
 end
 
 %Netz anregeln:
-function Netz_anregeln() %% 7. Netz anregeln:   
+function result = Netz_anregeln() %% 7. Netz anregeln:   
     global Logfile;
     global Knotenliste;
     global Leitungsliste;
@@ -579,6 +589,13 @@ function Netz_anregeln() %% 7. Netz anregeln:
                 Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_ab_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmin für alle KW
             end
         end
+        
+        if (Sum_Reserve_KW < 1)
+            fprintf("\nKeine Regelreserve mehr vorhanden!\n");
+            result = false;
+            return
+        end
+        
         Anteil_NU = NU/Sum_Reserve_KW; %berechnet das Verhältnis aus Netzunterdeckung und Gesamtreserve
 
         %AUF - / AB - Regelung der Stellwerte: 
@@ -644,6 +661,13 @@ function Netz_anregeln() %% 7. Netz anregeln:
                 Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_ab_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmin für alle KW
             end
         end
+        
+        if (Sum_Reserve_KW < 1)
+            fprintf("\nKeine Regelreserve mehr vorhanden!\n");
+            result = false;
+            return
+        end
+        
         Anteil_NU = NU/Sum_Reserve_KW; %berechnet das Verhältnis aus Netzunterdeckung und Gesamtreserve
 
         %AUF - / AB - Regelung der Stellwerte: 
@@ -675,6 +699,8 @@ function Netz_anregeln() %% 7. Netz anregeln:
     clear NU
     clear a_k
     clear c
+    
+    result = true;
 end
 
 %Time Sequencer:
@@ -967,6 +993,36 @@ function ok = Zweifachredundanz_Kraftwerke_ok
    end
 end
 
+
+
+
+
+
+function power = Regelreserve_auf_KW()
+    global Kraftwerksliste;
+    [~,m]=size(Kraftwerksliste);
+    Sum_Reserve_KW = 0;
+    for i=1:m
+        Kraftwerk = Kraftwerksliste(1,i);
+        Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_auf_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmax für alle KW
+    end
+    power = Sum_Reserve_KW;
+end
+function power = Regelreserve_ab_KW()
+    global Kraftwerksliste;
+    [~,m]=size(Kraftwerksliste);
+    Sum_Reserve_KW = 0;
+    for i=1:m
+        Kraftwerk = Kraftwerksliste(1,i);
+        Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_ab_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmin für alle KW
+    end
+    power = Sum_Reserve_KW;
+end
+
+
+
+
+
 %Leitungen
 function power = Leitungen_Bemessungsleistung_verfuegbar_max()
     global Leitungsliste
@@ -1069,7 +1125,40 @@ function pp = Bemessungsleistung_zweitgroesste_Leitung()
     clear p
 end
 
-
+%Kosten
+function cost = Netzkosten_berechnen()
+    global Leitungsliste
+    [~,n]=size(Leitungsliste);
+    ck=0;
+    cv=0;
+    for i=1:n
+        Leitung = Leitungsliste(1,i);
+        ck = ck + Leitung.Fixkosten();
+        cv = cv + Leitung.VariableKosten();
+    end
+    CL = ck + cv;
+    global Kraftwerksliste
+    [~,m]=size(Kraftwerksliste);
+    ck=0;
+    cv=0;
+    for i=1:m
+        Kraftwerk = Kraftwerksliste(1,i);
+        ck = ck + Kraftwerk.Fixkosten();
+        cv = cv + Kraftwerk.VariableKosten();
+    end
+    CN = ck + cv;
+    global Knotenliste
+    [~,u]=size(Knotenliste);
+    ck=0;
+    cv=0;
+    for i=1:u
+        Knoten = Knotenliste(1,i);
+        ck = ck + Knoten.Fixkosten();
+        cv = cv + Knoten.VariableKosten();
+    end
+    CK = ck + cv;
+    cost = CL + CN + CK;
+end
 
 % Funktionen für den Netzregler:
 function result = Leitungslastquadratsumme_berechnen() %sum_p_L berechnen (= Summe der quadrierten pL-Werte)
