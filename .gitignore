@@ -1,7 +1,7 @@
 .DS_Store
 ~$*
 **~
-log/**
-data/weather/**
-data/load/**
+log/
+data/weather/
+data/load/
 
