@@ -50,7 +50,7 @@ classdef Kraftwerke_Lasten_Speicher < handle
              obj.TQ = tq{1,1};
              
              obj.t_alt = 0;
-             obj.delta_t_alt = 15*60;
+             obj.delta_t_alt = 15*60; %Variable Zeitschlitzlänge
               
              if obj.R_N == 3 %|| obj.R_N == 4
                  obj.Trend=obj.Trend_laden();
@@ -59,7 +59,6 @@ classdef Kraftwerke_Lasten_Speicher < handle
              if obj.R_N == 4 
                  obj.Trend=obj.Trend_laden_2();
              end
-             
         end
         function result = Trend_laden(obj)
             val = jsondecode(fileread(fullfile('../data/',obj.TQ{1,1})));
@@ -105,23 +104,29 @@ classdef Kraftwerke_Lasten_Speicher < handle
         end
         
         function Sollwert_setzen(obj,x_N)
-            if x_N >= obj.x_Nmax
-                obj.x_N = obj.x_Nmax;
-            elseif x_N <= obj.x_Nmin
-                obj.x_N = obj.x_Nmin;
+            min = obj.VerfuegbareStellgroesseBezug();
+            max = obj.VerfuegbareStellgroesseLieferung();
+            if x_N >= max
+                obj.x_N = max;
+            elseif x_N <= min
+                obj.x_N = min;
             else
                 obj.x_N = x_N;
             end
-            if obj.istSpeicher() && obj.b_N >= 1 && obj.x_N <= 0
+            
+            if obj.SpeicherIstVoll() && obj.x_N <= 0
                 obj.x_N = 0;
-            elseif obj.istSpeicher() && obj.b_N <= 0 && obj.x_N >= 0
+            elseif obj.SpeicherIstLeer && obj.x_N >= 0
                 obj.x_N = 0;
             end
-            %result = obj;
         end
         function result = Regelreserve_auf(obj)
             if obj.R_N == 2
-                result = obj.x_Nmax - obj.x_N;
+                max = obj.VerfuegbareStellgroesseLieferung();
+                result = max - obj.x_N;
+                if (result < 0)
+                    result = 0;
+                end
                 if obj.istSpeicher() && obj.b_N <= 0
                     result = 0;
                 end
@@ -134,7 +139,11 @@ classdef Kraftwerke_Lasten_Speicher < handle
         end
         function result = Regelreserve_ab(obj) % LADEN
             if obj.R_N == 2
-                result = obj.x_N - obj.x_Nmin;
+                min = obj.VerfuegbareStellgroesseBezug();
+                result = obj.x_N - min;
+                if (result < 0)
+                    result = 0;
+                end
                 if obj.istSpeicher() && obj.b_N >= 1
                     result = 0;
                 end
@@ -180,7 +189,58 @@ classdef Kraftwerke_Lasten_Speicher < handle
                 result = false;
             end
         end
-    end    
+%        function result = SpeicherDarfEntladen(obj)
+%            if (obj.x_N > 0 && (obj.istSpeicher() && (obj.x_N * obj.P_N * obj.delta_t_alt / 3600) > (obj.b_N * obj.B_N)))
+%                result = false; 
+%            else
+%                result = true;
+%            end
+%        end
+%        function result = SpeicherDarfLaden(obj)
+%            if (obj.x_N < 0 && (obj.istSpeicher() && (-obj.x_N * obj.P_N) * (obj.delta_t_alt / 3600) > (obj.B_N - obj.b_N * obj.B_N)))
+%                result = false;
+%            else
+%                result = true;
+%            end
+%        end
+        function result = SpeicherIstLeer(obj)
+            result = (obj.istSpeicher() && obj.b_N <= 0);
+        end
+        function result = SpeicherIstVoll(obj)
+            result = (obj.istSpeicher() && obj.b_N >= 1);
+        end
+        function result = VerfuegbareLeistungBezug_kW(obj)
+            result = obj.P_N * obj.x_Nmin;
+            if (obj.istSpeicher())  % Ladebetrieb
+                Restenergie = (1 - obj.b_N) * obj.B_N;  % kWh noch ladbar
+                power = -Restenergie / (obj.delta_t_alt / 3600);
+                if (power > result)
+                    result = power;
+                end
+            elseif (obj.gestoert())
+                result = 0;
+            end
+        end
+        function result = VerfuegbareStellgroesseBezug(obj)
+            result = obj.VerfuegbareLeistungBezug_kW() / obj.P_N;
+        end
+        function result = VerfuegbareLeistungLieferung_kW(obj)
+            result = obj.P_N * obj.x_Nmax;
+            if (obj.istSpeicher())  % Entladebetrieb
+                Restenergie = obj.b_N * obj.B_N;  % kWh noch entladbar
+                power = Restenergie / (obj.delta_t_alt / 3600);
+                if (power < result)
+                    result = power;
+                end
+            elseif (obj.gestoert())
+                result = 0;
+            end
+        end
+        function result = VerfuegbareStellgroesseLieferung(obj)
+            result = obj.VerfuegbareLeistungLieferung_kW() / obj.P_N;
+        end
+        
+    end
     
     methods (Access = private)
         function Speicher_rechnen(obj, time)
@@ -194,7 +254,6 @@ classdef Kraftwerke_Lasten_Speicher < handle
             delta_kWh = -obj.Leistung_aktuell() * Zeitschlitzdauer / 3600;
             
             obj.b_N = obj.b_N + (delta_kWh / obj.B_N);
-            % todo: Nachdenken, wie Füllstände begrenzt werden
             
             obj.t_alt = time;
         end

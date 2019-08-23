@@ -1,6 +1,10 @@
 clc, clear, close all 
 feature('DefaultCharacterSet','UTF-8');
 warning('off','all');
+
+%% Alte Grafikausgaben loeschen
+delete('../log/Grafik/*');
+
 %% 0. Logfile anlegen:
 global Logfile;
 Logfile=fopen('../log/Logfile.txt', 'w');
@@ -33,74 +37,7 @@ Kraftwerksliste = Kraftwerke_initialisieren();
 
 
 %% 1. Programm
-Leitungsfluss_berechnen();
-Logfile_schreiben();
-if (Netz_anregeln() == false)
-    fprintf("\nNetz in Grundkonfiguration nicht regelbar!\n");
-    return
-end
-Grafik_plotten();
-Logfile_schreiben();
-zeitschlitze = 96;  % Anzahl zu berechnender Zeitschlitze
-dateStart = datetime('now');
-
-u=length(Leitungsliste);
-maxpowerflow=zeros(u,1);
-Tageskosten = 0;
-
-for t=1:zeitschlitze % 1 Tag berechnen mit 96 Zeitschlitzen a 15 min
-    dateNow = datetime('now');
-    laufzeit = dateNow - dateStart;
-    gesamtzeit = laufzeit * zeitschlitze / t;
-    restzeit = gesamtzeit - laufzeit;
-    laufzeitstring = datestr(laufzeit, 'HH:MM:SS');
-    restzeitstring = datestr(restzeit, 'HH:MM:SS');
-    gesamtzeitstring = datestr(gesamtzeit, 'HH:MM:SS');
-    fprintf("Berechne Schritt %i von %i. Laufzeit: %s Restzeit: %s Gesamtzeit: %s",...
-        t, zeitschlitze, laufzeitstring, restzeitstring, gesamtzeitstring);
-    clear laufzeit
-    clear gesamtzeit
-    clear restzeit
-    clear restzeitstring
-    
-    
-    d = datetime('04-Jul-2019 00:50:00');
-    unixtimestart = posixtime(d)-7200; %  7200 abziehen um von +2h GMT zu UTC zu konvertieren
-    time = unixtimestart + t*15*60;
-    Zeit_setzen(time);
-    if (Netz_anregeln() == false)
-        fprintf("\nNetz im laufenden Betrieb nicht regelbar!\n");
-        break;
-    end
-    Tageskosten = Tageskosten + Netzkosten_berechnen()
-    
-    Grafik_plotten();
-    Logfile_schreiben();
-    clc;
-    for f=1:u
-        Leitung=Leitungsliste(1,f);
-        %Leitung.p_L*Leitung.P_L;
-        %maxpower;
-        if (abs(Leitung.p_L*Leitung.P_L)) > maxpowerflow(f,1)
-            maxpowerflow(f,1)=abs(Leitung.p_L*Leitung.P_L);
-        end
-    end
-end
-
-Bemessungsleistung=zeros(u,1);
-for i=1:u %Bemessungsleistung aus Originaltabelle / Liste holen
-    Leitung=Leitungsliste(1,i);
-    Bemessungsleistung(i,1)=Leitung.P_L;
-end
-
-maxpowerflow
-delta_mpf_PL = (maxpowerflow./Bemessungsleistung)-1
-Leitungsauslastung_errechnet = maxpowerflow./Bemessungsleistung
-Tageskosten
-
-
-clear time;
-
+Lastgang_rechnen();
 %% 2.Optimierer
 
 
@@ -188,6 +125,81 @@ function result = Kraftwerke_initialisieren() %% 3. Kraftwerke_Lasten_Speicher
     clear i
     clear m
     clear Kraftwerksmatrix
+end
+
+%Lastgang rechnen
+function Lastgang_rechnen()
+    %global Knotenliste;
+    global Leitungsliste;
+    %global Kraftwerksliste;
+
+    Leitungsfluss_berechnen();
+    Logfile_schreiben();
+    if (Netz_anregeln() == false)
+        fprintf("\nNetz in Grundkonfiguration nicht regelbar!\n");
+        return
+    end
+    Grafik_plotten();
+    Logfile_schreiben();
+    zeitschlitze = 96;  % Anzahl zu berechnender Zeitschlitze
+    dateStart = datetime('now');
+
+    u=length(Leitungsliste);
+    maxpowerflow=zeros(u,1);
+    Tageskosten = 0;
+
+    for t=1:zeitschlitze % 1 Tag berechnen mit 96 Zeitschlitzen a 15 min
+        dateNow = datetime('now');
+        laufzeit = dateNow - dateStart;
+        gesamtzeit = laufzeit * zeitschlitze / t;
+        restzeit = gesamtzeit - laufzeit;
+        laufzeitstring = datestr(laufzeit, 'HH:MM:SS');
+        restzeitstring = datestr(restzeit, 'HH:MM:SS');
+        gesamtzeitstring = datestr(gesamtzeit, 'HH:MM:SS');
+        fprintf("Berechne Schritt %i von %i. Laufzeit: %s Restzeit: %s Gesamtzeit: %s",...
+            t, zeitschlitze, laufzeitstring, restzeitstring, gesamtzeitstring);
+        clear laufzeit
+        clear gesamtzeit
+        clear restzeit
+        clear restzeitstring
+
+
+        d = datetime('04-Jul-2019 00:50:00');
+        unixtimestart = posixtime(d)-7200; %  7200 abziehen um von +2h GMT zu UTC zu konvertieren
+        time = unixtimestart + t*15*60;
+        Zeit_setzen(time);
+        if (Netz_anregeln() == false)
+            fprintf("\nNetz im laufenden Betrieb nicht regelbar!\n");
+            break;
+        end
+        Tageskosten = Tageskosten + Netzkosten_berechnen();
+
+        Grafik_plotten();
+        Logfile_schreiben();
+        clc;
+        Tageskosten
+        for f=1:u
+            Leitung=Leitungsliste(1,f);
+            %Leitung.p_L*Leitung.P_L;
+            %maxpower;
+            if (abs(Leitung.p_L*Leitung.P_L)) > maxpowerflow(f,1)
+                maxpowerflow(f,1)=abs(Leitung.p_L*Leitung.P_L);
+            end
+        end
+    end
+
+    Bemessungsleistung=zeros(u,1);
+    for i=1:u %Bemessungsleistung aus Originaltabelle / Liste holen
+        Leitung=Leitungsliste(1,i);
+        Bemessungsleistung(i,1)=Leitung.P_L;
+    end
+
+    maxpowerflow;
+    delta_mpf_PL = (maxpowerflow./Bemessungsleistung)-1;
+    Leitungsauslastung_errechnet = maxpowerflow./Bemessungsleistung;
+
+    clear time;
+    % to do: mehr clear ...
 end
 
 %Netz berechnen:
@@ -473,7 +485,13 @@ function Grafik_plotten() %% 6. Grafik erstellen
         plot([Startknoten.Long_K Endknoten.Long_K], [Startknoten.Lat_K Endknoten.Lat_K],...
             '',...
             'Color', LineColor, 'LineStyle', LineStyle, 'LineWidth', 0.5 + abs(p_norm));
-        Leitungstext = sprintf("L%i: %.0f kW\n", i, abs(p));
+            
+        if (abs(p) > 10000)
+            Istleistungstext = sprintf("%8.0f MW", abs(p) / 1000);
+        else
+            Istleistungstext = sprintf("%.0f kW", abs(p));
+        end
+        Leitungstext = sprintf("L%i: %s\n", i, Istleistungstext);
 
         Textwinkel = (atan(3*(Endknoten.Lat_K-Startknoten.Lat_K)/(Endknoten.Long_K-Startknoten.Long_K)))*360/2/3.1415;
         text((Startknoten.Long_K + Endknoten.Long_K) / 2,...
@@ -572,9 +590,17 @@ function result = Netz_anregeln() %% 7. Netz anregeln:
 %            pL0(i,1)=Leitung.p_L;
 %        end
     
+        %Speicher oder Kraftwerke entlasten, die nicht mehr ausreichend
+        %liefern können
+        [~,m]=size(Kraftwerksliste);
+        for i=1:m
+                Kraftwerk = Kraftwerksliste(1,i);
+                Kraftwerk.Sollwert_setzen(Kraftwerk.x_N);
+        end
+
         %1. Netzunterdeckung auf 0 bringen, falls kurz zuvor
         %Kraftwerksausfall
-                %Regelreserve nach oben/unten in Abhängigkeit von positiver/negativer NU berechnen:
+        %Regelreserve nach oben/unten in Abhängigkeit von positiver/negativer NU berechnen:
         NU = Netzunterdeckung_aktuell(); %berechnet aktuelle Netzunterdeckung
         [~,m]=size(Kraftwerksliste);
         Sum_Reserve_KW = 0;
@@ -582,7 +608,6 @@ function result = Netz_anregeln() %% 7. Netz anregeln:
             for i=1:m
                 Kraftwerk = Kraftwerksliste(1,i);
                 Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_auf_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmax für alle KW
-            % to do: Reserve muss für Speicher korrigiert werden
             end
         else  % Kraftwerksverbund muss abgeregelt werden, wenn die NU kleiner 0 ist (=Überschuss)
             for i=1:m
@@ -609,6 +634,10 @@ function result = Netz_anregeln() %% 7. Netz anregeln:
                 RR = Kraftwerk.Regelreserve_ab();
             end
             Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + RR * Anteil_NU); %Anteil auf Regelreserve aufschalten und um das den Stellwert verändern (für alle KW)
+        end
+        NU = Netzunterdeckung_aktuell();
+        if (abs(NU) > 0.1)
+            fprintf("\nUnterdeckungsausgleich vor Regelung nicht moeglich! NU ist: %.2f kW\n", NU);
         end
         Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
         %Logfile_schreiben();
@@ -681,6 +710,10 @@ function result = Netz_anregeln() %% 7. Netz anregeln:
                 RR = Kraftwerk.Regelreserve_ab();
             end
             Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + RR * Anteil_NU); %Anteil auf Regelreserve aufschalten und um das den Stellwert verändern (für alle KW)
+        end
+        NU = Netzunterdeckung_aktuell();
+        if (abs(NU) > 0.1)
+            fprintf("\nUnterdeckungsausgleich nach Regelung nicht moeglich! NU ist: %.2f kW\n", NU);
         end
         Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
         %Logfile_schreiben();
@@ -788,7 +821,19 @@ function plotKraftwerk(x, y, Kraftwerk)
     end
     
     % Text des Kraftwerks
-    Kraftwerkstext = sprintf("%s %03i\np=%8.0f kW\nP=%8.0f kW", typ, n, p, P);
+    if (P > 10000)
+        Nennleistungstext = sprintf("%8.0f MW", P / 1000);
+    else
+        Nennleistungstext = sprintf("%8.0f kW", P);
+    end
+    
+    if (abs(p) > 10000)
+        Istleistungstext = sprintf("%8.0f MW", p / 1000);
+    else
+        Istleistungstext = sprintf("%8.0f kW", p);
+    end
+    
+    Kraftwerkstext = sprintf("%s %03i\np=%s\nP=%s", typ, n, Istleistungstext, Nennleistungstext);
     text(x - x_offset ,y - 2*y_offset, Kraftwerkstext,...
         'FontSize',10, 'Rotation', 90,...
         'HorizontalAlignment', 'Right',...
