@@ -28,15 +28,19 @@ SOURCES += \
         knoten.cpp \
         kraftwerk_last_speicher.cpp \
         leitung.cpp \
+        logger.cpp \
         main.cpp \
         mainwindow.cpp \
+        netzberechnung.cpp \
         trend.cpp
 
 HEADERS += \
         knoten.h \
         kraftwerk_last_speicher.h \
         leitung.h \
+        logger.h \
         mainwindow.h \
+        netzberechnung.h \
         trend.h
 
 FORMS += \

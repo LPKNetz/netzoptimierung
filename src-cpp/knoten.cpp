@@ -1,4 +1,5 @@
 #include "knoten.h"
+#include <QList>
 
 Knoten::Knoten(QObject *parent, quint32 k, qreal longK, qreal latK, qreal PK, qreal CK, bool oPK) : QObject(parent)
 {
@@ -12,6 +13,36 @@ Knoten::Knoten(QObject *parent, quint32 k, qreal longK, qreal latK, qreal PK, qr
     this->delta_t_alt = 15*60;      // Letzte Zeitschlitzdauer
 }
 
+void Knoten::setLogger(Logger *logger)
+{
+    mLogger = logger;
+    connect(this, SIGNAL(signalLog(QString, QString)), logger, SLOT(slot_Log(QString, QString)));
+}
+
+bool Knoten::parseCSVline(QString line)
+{
+    line.replace(',', '.');
+    QList<QString> fields = line.split(';');
+
+    if (fields.length() < 6)
+    {
+        emit signalLog("Error", "Knoten: Kann fields nicht parsen");
+        return false;
+    }
+
+    if (fields.at(0).isEmpty())
+        return false;
+
+    this->K = quint32(fields.at(0).toInt());          // Knotenindex
+    this->Long_K = fields.at(1).toDouble();           // Längengrad Position des Knoten
+    this->Lat_K = fields.at(2).toDouble();            // Breitengrad Porisiton des Knoten
+    this->P_K = fields.at(3).toDouble();              // Bemessunngsleistung des Knoten in kW
+    this->C_K = fields.at(4).toDouble();              // Fixkosten des Knoten
+    this->o_PK = bool(fields.at(5).toInt());          // Erlaube Vorgabe Bemessungsleistung durch Optimizer
+
+    return true;
+}
+
 void Knoten::Zeit_setzen(QDateTime time)
 {
     if (t_alt.isNull())
@@ -20,7 +51,7 @@ void Knoten::Zeit_setzen(QDateTime time)
         return;
     }
 
-    this->delta_t_alt = (quint64)this->t_alt.secsTo(time);
+    this->delta_t_alt = quint64(this->t_alt.secsTo(time));
     this->t_alt = time;
 }
 

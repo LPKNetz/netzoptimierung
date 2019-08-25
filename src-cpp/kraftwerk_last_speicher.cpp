@@ -41,6 +41,48 @@ Kraftwerk_Last_Speicher::Kraftwerk_Last_Speicher(QObject *parent,
     this->delta_t_alt = 15 * 60;
 }
 
+void Kraftwerk_Last_Speicher::setLogger(Logger *logger)
+{
+    mLogger = logger;
+    connect(this, SIGNAL(signalLog(QString, QString)), logger, SLOT(slot_Log(QString, QString)));
+}
+
+bool Kraftwerk_Last_Speicher::parseCSVline(QString line)
+{
+    line.replace(',', '.');
+    QList<QString> fields = line.split(';');
+
+    if (fields.length() < 15)
+    {
+        emit signalLog("Error", "Kraftwerk: Kann fields nicht parsen");
+        return false;
+    }
+
+    if (fields.at(0).isEmpty())
+        return false;
+
+    this->N = quint32(fields.at(0).toInt());
+    this->K = quint32(fields.at(1).toInt());
+    this->P_N = fields.at(2).toDouble();
+    this->x_Nmin = fields.at(3).toDouble();
+    this->x_Nmax = fields.at(4).toDouble();
+    this->x_N = fields.at(5).toDouble();
+    this->R_N = Regelart(fields.at(6).toInt());
+    this->C_N = fields.at(7).toDouble();
+    this->c_N = fields.at(8).toDouble();
+    this->o_NP = bool(fields.at(9).toInt());
+
+    // Daten zusätzlich bei Speichern
+    this->B_N = fields.at(10).toDouble();
+    this->b_N = fields.at(11).toDouble();
+    this->n_N = fields.at(12).toDouble();
+    this->o_MK = bool(fields.at(13).toInt());
+    this->o_NB = bool(fields.at(14).toInt());
+    this->TQ = fields.at(15);
+
+    return true;
+}
+
 void Kraftwerk_Last_Speicher::Zeit_setzen(QDateTime time)
 {
     if (t_alt.isNull())

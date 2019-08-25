@@ -3,12 +3,19 @@
 
 #include <QObject>
 #include <QDateTime>
+#include "logger.h"
 
 class Knoten : public QObject
 {
     Q_OBJECT
 public:
-    explicit Knoten(QObject *parent, quint32 k, qreal longK, qreal latK, qreal PK, qreal CK, bool oPK);
+    explicit Knoten(QObject *parent,
+                    quint32 k = 0,
+                    qreal longK = 0.0,
+                    qreal latK = 0.0,
+                    qreal PK = 0.0,
+                    qreal CK = 0.0,
+                    bool oPK = false);
 
     quint32 K;              // Knotenindex
     qreal Long_K;           // Längengrad Position des Knoten
@@ -19,11 +26,17 @@ public:
     QDateTime t_alt;        // Letzter Zeitstempel
     quint64 delta_t_alt;    // Letzte Zeitschlitzdauer
 
+    Logger *mLogger;
+
+    void setLogger(Logger* logger);
+    bool parseCSVline(QString line);
+
     void Zeit_setzen(QDateTime time);
     qreal Fixkosten();
     qreal Variablekosten();
 
 signals:
+    void signalLog(QString category, QString text);
 
 public slots:
 };

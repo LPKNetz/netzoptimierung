@@ -4,12 +4,13 @@
 #include <QObject>
 #include <QDateTime>
 #include "trend.h"
+#include "logger.h"
 
 typedef enum {
-    Festleistung,
-    Fremdregelung,
-    Klimabedingt,
-    Selbstregelung
+    Festleistung = 1,
+    Fremdregelung = 2,
+    Klimabedingt = 3,
+    Selbstregelung = 4
 } Regelart;
 
 class Kraftwerk_Last_Speicher : public QObject
@@ -17,22 +18,22 @@ class Kraftwerk_Last_Speicher : public QObject
     Q_OBJECT
 public:
     explicit Kraftwerk_Last_Speicher(QObject *parent,
-                                     quint32 Number,
-                                     quint32 k,
-                                     qreal PN,
-                                     qreal xNmin,
-                                     qreal xNmax,
-                                     qreal xN,
-                                     Regelart RN,
-                                     qreal CN,
-                                     qreal cN,
-                                     bool oNP,
-                                     qreal BN,
-                                     qreal bN,
-                                     qreal nN,
-                                     bool oMK,
-                                     bool oNB,
-                                     QString tq);
+                                     quint32 Number = 0,
+                                     quint32 k = 0,
+                                     qreal PN = 0.0,
+                                     qreal xNmin = 0.0,
+                                     qreal xNmax = 0.0,
+                                     qreal xN = 0.0,
+                                     Regelart RN = Festleistung,
+                                     qreal CN = 0.0,
+                                     qreal cN = 0.0,
+                                     bool oNP = false,
+                                     qreal BN = 0.0,
+                                     qreal bN = 0.0,
+                                     qreal nN = 0.0,
+                                     bool oMK = false,
+                                     bool oNB = false,
+                                     QString tq = QString());
 
     quint32 N;              // Nummer
     quint32 K;              // Netzverknüpfungspunkt
@@ -55,6 +56,11 @@ public:
     Trend *trend;           // Trenddaten
     QDateTime t_alt;        // Letzter Zeitstempel
     quint64 delta_t_alt;    // Letzte Zeitschlitzdauer
+
+    Logger *mLogger;
+
+    void setLogger(Logger* logger);
+    bool parseCSVline(QString line);
 
     void Zeit_setzen(QDateTime time);
     qreal Fixkosten();
@@ -82,6 +88,7 @@ private:
 
 
 signals:
+    void signalLog(QString category, QString text);
 
 public slots:
 };

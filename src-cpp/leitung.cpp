@@ -26,6 +26,40 @@ Leitung::Leitung(QObject *parent,
     delta_t_alt = 15 * 60;
 }
 
+void Leitung::setLogger(Logger *logger)
+{
+    mLogger = logger;
+    connect(this, SIGNAL(signalLog(QString, QString)), logger, SLOT(slot_Log(QString, QString)));
+}
+
+bool Leitung::parseCSVline(QString line)
+{
+    line.replace(',', '.');
+    QList<QString> fields = line.split(';');
+
+    if (fields.length() < 10)
+    {
+        emit signalLog("Error", "Leitung: Kann fields nicht parsen");
+        return false;
+    }
+
+    if (fields.at(0).isEmpty())
+        return false;
+
+    L = quint32(fields.at(0).toInt());
+    K_L1 = quint32(fields.at(1).toInt());
+    K_L2 = quint32(fields.at(2).toInt());
+    P_L = fields.at(3).toDouble();
+    p_L = fields.at(4).toDouble();
+    R_L = fields.at(5).toDouble();
+    C_L = fields.at(6).toDouble();
+    c_L = fields.at(7).toDouble();
+    o_KL = bool(fields.at(8).toInt());
+    o_PL = bool(fields.at(9).toInt());
+
+    return true;
+}
+
 qreal Leitung::Transportleistung()
 {
     return (this->p_L * this->P_L);

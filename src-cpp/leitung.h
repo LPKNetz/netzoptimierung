@@ -3,22 +3,24 @@
 
 #include <QObject>
 #include <QDateTime>
+#include "knoten.h"
+#include "logger.h"
 
 class Leitung : public QObject
 {
     Q_OBJECT
 public:
     explicit Leitung(QObject *parent,
-                     quint32 l,
-                     quint32 kL1,
-                     quint32 kL2,
-                     qreal PL,
-                     qreal pL,
-                     qreal RL,
-                     qreal CL,
-                     qreal cL,
-                     bool oKL,
-                     bool oPL);
+                     quint32 l = 0,
+                     quint32 kL1 = 0,
+                     quint32 kL2 = 0,
+                     qreal PL = 0.0,
+                     qreal pL = 0.0,
+                     qreal RL = 0.0,
+                     qreal CL = 0.0,
+                     qreal cL = 0.0,
+                     bool oKL = false,
+                     bool oPL = false);
 
     quint32 L;              // Leitungsnummer
     quint32 K_L1;           // Startknoten
@@ -33,6 +35,11 @@ public:
     QDateTime t_alt;        // Letzter Zeitstempel
     quint64 delta_t_alt;    // Letzte Zeitschlitzdauer
 
+    Logger *mLogger;
+
+    void setLogger(Logger* logger);
+    bool parseCSVline(QString line);
+
     qreal Transportleistung();
     qreal Leitungswiderstand();
     void Aktuelle_Leistung_setzen_in_kW(qreal leistung);
@@ -46,6 +53,7 @@ public:
     bool gestoert();
 
 signals:
+    void signalLog(QString category, QString text);
 
 public slots:
 };
