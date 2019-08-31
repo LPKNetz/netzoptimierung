@@ -48,9 +48,9 @@ private:
     Logger *mLogger;
 
     void paintNetz(QPaintDevice *paintDevice);
-    void paintKraftwerk(QPaintDevice *paintDevice, Kraftwerk_Last_Speicher *kraftwerk);
-    void paintLeitung(QPaintDevice *paintDevice, Leitung *leitung);
-    void paintKnoten(QPaintDevice *paintDevice, Knoten *knoten);
+    void paintKraftwerk(QPainter *painter, Kraftwerk_Last_Speicher *kraftwerk);
+    void paintLeitung(QPainter *painter, Leitung *leitung);
+    void paintKnoten(QPainter *painter, Knoten *knoten);
 
 
 signals:
