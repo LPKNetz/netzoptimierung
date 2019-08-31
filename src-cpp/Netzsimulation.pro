@@ -31,6 +31,7 @@ SOURCES += \
         logger.cpp \
         main.cpp \
         mainwindow.cpp \
+        math/matrix.cpp \
         netzberechnung.cpp \
         trend.cpp
 
@@ -40,6 +41,7 @@ HEADERS += \
         leitung.h \
         logger.h \
         mainwindow.h \
+        math/matrix.h \
         netzberechnung.h \
         trend.h
 
