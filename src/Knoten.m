@@ -1,5 +1,4 @@
-classdef Knoten < handle
-    
+classdef Knoten < handle 
     properties
         K
         Long_K
@@ -9,10 +8,8 @@ classdef Knoten < handle
         o_PK          % Erlaube Vorgabe Bemessungsleistung, muss bei der Objektgenerierung =1 gesetzt werden
         t_alt       % Letzer Zeitstempel
         delta_t_alt % Letzte Zeitschlitzdauer
-    end
-    
-    methods (Access = public)
-        
+    end   
+    methods (Access = public)       
         function obj = Knoten (k,longK,latK,PK,CK,oPK)
             obj.K = k;            % erstelle Variable "Knotennummer"
             obj.Long_K = longK;   % erstelle Variable "Longitude"
@@ -22,9 +19,7 @@ classdef Knoten < handle
             obj.o_PK = oPK;
             obj.t_alt = 0;
             obj.delta_t_alt = 15*60;
-        end
-        
-        
+        end        
         function Zeit_setzen(obj,time)
             if (obj.t_alt == 0)
                 obj.t_alt = time;
@@ -39,17 +34,9 @@ classdef Knoten < handle
         end
         function result = VariableKosten(obj)
             result = 0;
-        end
-        
-        
-    end
-    
-    
-    
+        end   
+    end    
     methods (Static)
-        
-        
-        
     end
 end
 

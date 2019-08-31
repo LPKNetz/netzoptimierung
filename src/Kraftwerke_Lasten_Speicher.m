@@ -7,20 +7,15 @@ classdef Kraftwerke_Lasten_Speicher < handle
                 x_Nmax  	% Max. Stellgröße [1]        x aus [-1;1]  ,  x_Nmax  >=  x_Nmin  
                 x_N  		% Aktuelle Stellgröße [1]    x aus [x_Nmin ; x_Nmax]  
                     % assume(x_N>=x_Nmin | x_N<=x_Nmax)
-
                 R_N  		% Regelart [enam]   ,   R aus {Festleistung, Fremd, Klima, Selbst}
                     % R_N={Festleistung, Fremd, Klima, Selbst};
-
                 C_N  		% Fixkosten [?/s]   	
                 c_N  		% Variable Kosten [?/kWh]  
-
                 o_NP  		% Erlaube Vorgabe Nennleistung  [bool]
-    
 % Zusätzlich bei Speicher:
                 B_N  		% Bunkergröße [kWh]   ,   (const.)
                 b_N  		% Bunkerfüllstand [1]  ,  b aus [0;1]
                 n_N  		% Nachfüllrate (bzw. Selbstentladung) [kW]
-
                 o_MK  		% Erlaube Vorgabe Netzverknüpfungspunkt  [bool]
                 o_NB  		% Erlaube Vorgabe Bunkergröße  [bool]
                 TQ          % Pfad Trendquelle (Kurven)
@@ -28,7 +23,6 @@ classdef Kraftwerke_Lasten_Speicher < handle
                 t_alt       % Letzer Zeitstempel
                 delta_t_alt % Letzte Zeitschlitzdauer
     end
-    
     methods (Access = public)
         function obj = Kraftwerke_Lasten_Speicher (Number,k, PN,xNmin,xNmax,xN,RN,CN,cN,oNP,BN,bN,nN,oMK,oNB,tq)
              obj.N = Number{1,1};
@@ -80,8 +74,6 @@ classdef Kraftwerke_Lasten_Speicher < handle
         function result = VariableKosten(obj)
             result = obj.delta_t_alt * abs(obj.Leistung_aktuell()) * obj.c_N/3600; % liefert ?/Zeitschlitz
         end
-        
-        
         % Bei Speichern ist grundsätzlich zuerst die Zeit zu setzen, bevor die Leistung verstellt wird.
         function result = Zeit_setzen(obj,time)
             if obj.istSpeicher()
@@ -194,15 +186,13 @@ classdef Kraftwerke_Lasten_Speicher < handle
 %                result = false; 
 %            else
 %                result = true;
-%            end
-%        end
+%            end end
 %        function result = SpeicherDarfLaden(obj)
 %            if (obj.x_N < 0 && (obj.istSpeicher() && (-obj.x_N * obj.P_N) * (obj.delta_t_alt / 3600) > (obj.B_N - obj.b_N * obj.B_N)))
 %                result = false;
 %            else
 %                result = true;
-%            end
-%        end
+%            end end
         function result = SpeicherIstLeer(obj)
             result = (obj.istSpeicher() && obj.b_N <= 0);
         end
@@ -238,10 +228,8 @@ classdef Kraftwerke_Lasten_Speicher < handle
         end
         function result = VerfuegbareStellgroesseLieferung(obj)
             result = obj.VerfuegbareLeistungLieferung_kW() / obj.P_N;
-        end
-        
+        end  
     end
-    
     methods (Access = private)
         function Speicher_rechnen(obj, time)
             if (obj.t_alt == 0)

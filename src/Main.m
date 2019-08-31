@@ -5,7 +5,7 @@ warning('off','all');
 %% Alte Grafikausgaben loeschen
 delete('../log/Grafik/*');
 
-%% 0. Logfile anlegen:
+%% Logfile anlegen:
 global Logfile;
 Logfile=fopen('../log/Logfile.txt', 'w');
 if Logfile == -1
@@ -36,9 +36,11 @@ global Kraftwerksliste;
 Kraftwerksliste = Kraftwerke_initialisieren();
 
 
-%% 1. Programm
+%% Programm
+Netzmatrix_Leitungen_invers_berechnen();
 Lastgang_rechnen();
-%% 2.Optimierer
+
+%% Optimierer
 
 
 
@@ -51,7 +53,10 @@ if Logfile ~= 1
     fclose(Logfile);
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 
 %% Funktionen:
@@ -127,7 +132,7 @@ function result = Kraftwerke_initialisieren() %% 3. Kraftwerke_Lasten_Speicher
     clear Kraftwerksmatrix
 end
 
-%Lastgang rechnen
+%Lastgang rechnen (Netzregler)
 function Lastgang_rechnen()
     %global Knotenliste;
     global Leitungsliste;
@@ -202,13 +207,10 @@ function Lastgang_rechnen()
     % to do: mehr clear ...
 end
 
-%Netz berechnen:
-function Leitungsfluss_berechnen() %% 4. Netztabellen einlesen, Netzmatrizen erstellen, aktuellen Leitungsfluss berechnen:
-    % Funktion ohne result! Trägt Ergebnisse direkt in die Leitungsliste ein.
-    % Netzmatrix_Leitungen (=A im Sinne v. Ax=b) erstellen:
+function Netzmatrix_Leitungen_invers_berechnen()
     global Knotenliste;
     global Leitungsliste;
-    global Kraftwerksliste;
+    global Netzmatrix_Leitungen_invers;
     k=length(Knotenliste);
     l=length(Leitungsliste);
     for i=1:k   %Netzmatrix_Leitungen erstellen
@@ -238,12 +240,10 @@ function Leitungsfluss_berechnen() %% 4. Netztabellen einlesen, Netzmatrizen ers
                 end
                 Netzmatrix_Leitungen(i,j)=-G_Summe;  
             end
-
-
-            %Netzmatrix_Leitungen(i,j)= 1/Leitungsliste(1,i).Leitungswiderstand();
-
         end
     end
+    
+    Netzmatrix_Leitungen_invers = inv(Netzmatrix_Leitungen);
     clear G_Summe
     clear i
     clear j
@@ -252,6 +252,17 @@ function Leitungsfluss_berechnen() %% 4. Netztabellen einlesen, Netzmatrizen ers
     clear m
     clear R
     clear G
+    clear Netzmatrix_Leitungen
+end
+
+%Netz berechnen:
+function Leitungsfluss_berechnen() %% 4. Netztabellen einlesen, Netzmatrizen erstellen, aktuellen Leitungsfluss berechnen:
+    % Funktion ohne result! Trägt Ergebnisse direkt in die Leitungsliste ein.
+    % Netzmatrix_Leitungen (=A im Sinne v. Ax=b) erstellen:
+    global Knotenliste;
+    global Leitungsliste;
+    global Kraftwerksliste;
+    global Netzmatrix_Leitungen_invers;
 
     % Leistungsvektor erstellen:
     k=length(Knotenliste);
@@ -274,7 +285,8 @@ function Leitungsfluss_berechnen() %% 4. Netztabellen einlesen, Netzmatrizen ers
     clear Kraftwerk
 
     %Potentialvektor erstellen:
-    Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
+    %Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
+    Potentialvektor = Netzmatrix_Leitungen_invers*Leistungsvektor;
 
     clear Netzmatrix_Leitungen
     clear Leistungsvektor
@@ -876,7 +888,6 @@ function finishAnimation(writer)
     close(writer);
 end
 
-%Rest:
 
 %Kraftwerke / Lasten / Speicher:
 function power = Netzausspeiseleistung_verfuegbar_min()
@@ -1038,12 +1049,6 @@ function ok = Zweifachredundanz_Kraftwerke_ok
        ok = false;
    end
 end
-
-
-
-
-
-
 function power = Regelreserve_auf_KW()
     global Kraftwerksliste;
     [~,m]=size(Kraftwerksliste);
@@ -1064,10 +1069,6 @@ function power = Regelreserve_ab_KW()
     end
     power = Sum_Reserve_KW;
 end
-
-
-
-
 
 %Leitungen
 function power = Leitungen_Bemessungsleistung_verfuegbar_max()
@@ -1205,9 +1206,6 @@ function cost = Netzkosten_berechnen()
     CK = ck + cv;
     cost = CL + CN + CK
 end
-
-
-
 
 % Funktionen für den Netzregler:
 function result = Leitungslastquadratsumme_berechnen() %sum_p_L berechnen (= Summe der quadrierten pL-Werte)
