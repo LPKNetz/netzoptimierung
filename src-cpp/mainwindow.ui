@@ -34,7 +34,7 @@
 </string>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <property name="tabsClosable">
        <bool>false</bool>
@@ -61,10 +61,15 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tab_2">
+      <widget class="QWidget" name="tab_log">
        <attribute name="title">
-        <string>Tab 2</string>
+        <string>Log</string>
        </attribute>
+       <layout class="QGridLayout" name="gridLayout_3">
+        <item row="0" column="0">
+         <widget class="QPlainTextEdit" name="plainTextEdit_log"/>
+        </item>
+       </layout>
       </widget>
      </widget>
     </item>

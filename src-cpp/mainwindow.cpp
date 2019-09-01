@@ -9,6 +9,8 @@ MainWindow::MainWindow(QWidget *parent) :
     mNetzberechnung = ui->widget_Netzberechnung;
     mNetzberechnung->setLogger(&mLogger);
     mNetzberechnung->Netz_initialisieren();
+
+    connect(&mLogger, SIGNAL(signalStringOutput(QString)), ui->plainTextEdit_log, SLOT(appendPlainText(QString)));
 }
 
 MainWindow::~MainWindow()
@@ -18,5 +20,5 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_actionLastgang_rechnen_triggered()
 {
-
+    mNetzberechnung->Lastgang_rechnen();
 }

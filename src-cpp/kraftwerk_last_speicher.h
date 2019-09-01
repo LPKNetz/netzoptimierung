@@ -73,7 +73,7 @@ public:
     qreal Nennleistung_min();
     qreal Nennleistung_max();
     qreal Leistung_aktuell();
-    quint32 Netzverknuepfungspunt();
+    quint32 Netzverknuepfungspunkt();
     bool gestoert();
     bool istSpeicher();
     bool SpeicherIstLeer();
@@ -84,7 +84,7 @@ public:
     qreal VerfuegbareStellgroesseLieferung();
 
 private:
-    void Speicher_rechnen(QDateTime time);
+    void Speicher_rechnen();
 
 
 signals:

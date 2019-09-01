@@ -95,7 +95,7 @@ void Kraftwerk_Last_Speicher::Zeit_setzen(QDateTime time)
     this->t_alt = time;
 
     if (this->istSpeicher())
-        this->Speicher_rechnen(time);
+        this->Speicher_rechnen();
 
     if (this->trend->isNull())
         return;
@@ -194,7 +194,7 @@ qreal Kraftwerk_Last_Speicher::Leistung_aktuell()
     return (this->P_N * this->x_N);
 }
 
-quint32 Kraftwerk_Last_Speicher::Netzverknuepfungspunt()
+quint32 Kraftwerk_Last_Speicher::Netzverknuepfungspunkt()
 {
     return (this->K);
 }
@@ -273,7 +273,7 @@ qreal Kraftwerk_Last_Speicher::VerfuegbareStellgroesseLieferung()
     return (this->VerfuegbareLeistungLieferung_kW() / this->P_N);
 }
 
-void Kraftwerk_Last_Speicher::Speicher_rechnen(QDateTime time)
+void Kraftwerk_Last_Speicher::Speicher_rechnen()
 {
     qreal delta_kWh = -this->Leistung_aktuell() * this->delta_t_alt / 3600.0;
 

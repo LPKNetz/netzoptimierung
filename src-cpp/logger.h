@@ -9,7 +9,10 @@ class Logger : public QObject
 public:
     explicit Logger(QObject *parent = nullptr);
 
+
+
 signals:
+    void signalStringOutput(QString str);
 
 public slots:
     void slot_Log(QString category, QString text);
