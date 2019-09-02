@@ -1,6 +1,6 @@
 clc, clear, close all 
 feature('DefaultCharacterSet','UTF-8');
-warning('off','all');
+warning('on','all');
 
 %% Alte Grafikausgaben loeschen
 delete('../log/Grafik/*');
@@ -243,7 +243,11 @@ function Netzmatrix_Leitungen_invers_berechnen()
         end
     end
     
+    % Knoten 1 als Referenzpunkt wählen, daher Zeile 1 und Spalte 1 löschen
+    Netzmatrix_Leitungen(1,:)=[];
+    Netzmatrix_Leitungen(:,1)=[];
     Netzmatrix_Leitungen_invers = inv(Netzmatrix_Leitungen);
+    
     clear G_Summe
     clear i
     clear j
@@ -285,8 +289,11 @@ function Leitungsfluss_berechnen() %% 4. Netztabellen einlesen, Netzmatrizen ers
     clear Kraftwerk
 
     %Potentialvektor erstellen:
-    %Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
+    % Leistungseintrag an Referenzpunkt (Knoten 1) löschen
+    Leistungsvektor(1,:)=[];
     Potentialvektor = Netzmatrix_Leitungen_invers*Leistungsvektor;
+    % Potentialvektoreintrag an Referenzpunkt (Knoten 1) hinzufügen und auf 0 setzen
+    Potentialvektor = [zeros(1,1); Potentialvektor]; 
 
     clear Netzmatrix_Leitungen
     clear Leistungsvektor
@@ -568,6 +575,52 @@ function Grafik_plotten() %% 6. Grafik erstellen
     clear y
 end
 
+%Netzunterdeckung auf 0 regeln:
+function result = Netzunterdeckung_regeln()
+    global Kraftwerksliste;
+    %Regelreserve nach oben/unten in Abhängigkeit von positiver/negativer NU berechnen:
+
+    NU = Netzunterdeckung_aktuell(); %berechnet aktuelle Netzunterdeckung
+    [~,m]=size(Kraftwerksliste);
+    Sum_Reserve_KW = 0;
+    if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden, wenn die NU größer 0 ist (=Mangel)
+        for i=1:m
+            Kraftwerk = Kraftwerksliste(1,i);
+            Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_auf_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmax für alle KW
+        end
+    else  % Kraftwerksverbund muss abgeregelt werden, wenn die NU kleiner 0 ist (=Überschuss)
+        for i=1:m
+            Kraftwerk = Kraftwerksliste(1,i);
+            Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_ab_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmin für alle KW
+        end
+    end
+
+    if (Sum_Reserve_KW < 1)
+        fprintf("\nKeine Regelreserve mehr vorhanden!\n");
+        result = false;
+        return
+    end
+
+    Anteil_NU = NU/Sum_Reserve_KW; %berechnet das Verhältnis aus Netzunterdeckung und Gesamtreserve
+
+    %AUF - / AB - Regelung der Stellwerte:
+    [~,m]=size(Kraftwerksliste);
+    for i=1:m
+        Kraftwerk = Kraftwerksliste(1,i);
+        if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden
+            RR = Kraftwerk.Regelreserve_auf();
+        else  % Kraftwerksverbund muss abgeregelt werden
+            RR = Kraftwerk.Regelreserve_ab();
+        end
+        Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + RR * Anteil_NU); %Anteil auf Regelreserve aufschalten und um das den Stellwert verändern (für alle KW)
+    end
+    NU = Netzunterdeckung_aktuell();
+    if (abs(NU) > 0.1)
+        result = false;
+    end
+    result = true;
+end
+
 %Netz anregeln:
 function result = Netz_anregeln() %% 7. Netz anregeln:   
     global Logfile;
@@ -612,44 +665,9 @@ function result = Netz_anregeln() %% 7. Netz anregeln:
 
         %1. Netzunterdeckung auf 0 bringen, falls kurz zuvor
         %Kraftwerksausfall
-        %Regelreserve nach oben/unten in Abhängigkeit von positiver/negativer NU berechnen:
-        NU = Netzunterdeckung_aktuell(); %berechnet aktuelle Netzunterdeckung
-        [~,m]=size(Kraftwerksliste);
-        Sum_Reserve_KW = 0;
-        if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden, wenn die NU größer 0 ist (=Mangel)
-            for i=1:m
-                Kraftwerk = Kraftwerksliste(1,i);
-                Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_auf_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmax für alle KW
-            end
-        else  % Kraftwerksverbund muss abgeregelt werden, wenn die NU kleiner 0 ist (=Überschuss)
-            for i=1:m
-                Kraftwerk = Kraftwerksliste(1,i);
-                Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_ab_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmin für alle KW
-            end
-        end
-        
-        if (Sum_Reserve_KW < 1)
-            fprintf("\nKeine Regelreserve mehr vorhanden!\n");
-            result = false;
-            return
-        end
-        
-        Anteil_NU = NU/Sum_Reserve_KW; %berechnet das Verhältnis aus Netzunterdeckung und Gesamtreserve
 
-        %AUF - / AB - Regelung der Stellwerte: 
-        [~,m]=size(Kraftwerksliste);   
-        for i=1:m
-            Kraftwerk = Kraftwerksliste(1,i);
-            if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden
-                RR = Kraftwerk.Regelreserve_auf();
-            else  % Kraftwerksverbund muss abgeregelt werden
-                RR = Kraftwerk.Regelreserve_ab();
-            end
-            Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + RR * Anteil_NU); %Anteil auf Regelreserve aufschalten und um das den Stellwert verändern (für alle KW)
-        end
-        NU = Netzunterdeckung_aktuell();
-        if (abs(NU) > 0.1)
-            fprintf("\nUnterdeckungsausgleich vor Regelung nicht moeglich! NU ist: %.2f kW\n", NU);
+        if Netzunterdeckung_regeln() == false
+            fprintf("\nUnterdeckungsausgleich vor Regelung nicht moeglich!\n");            
         end
         Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
         %Logfile_schreiben();
@@ -661,10 +679,12 @@ function result = Netz_anregeln() %% 7. Netz anregeln:
             Kraftwerk = Kraftwerksliste(1,i);
             x0 = Kraftwerk.x_N;  %x0 - Start-stellwert 
             Kraftwerk.x_N = Kraftwerk.x_N + c; %auf x0 - Vektor die finite Differenz c aufaddieren 
+            Netzunterdeckung_regeln();
             sum0 = Leitungslastquadratsumme_berechnen(); %Funktion quadriert jede einzelne Leitungslast (die initialen) und summiert alle
             Leitungsfluss_berechnen(); %berechnet aktuellen Lastfluss durch Leitungen
             sum1 = Leitungslastquadratsumme_berechnen(); %quadriert die neu berechneten Leitungslasten und summiert alle
             Kraftwerk.x_N = x0; %setzt x_N auf die ursprünglichen Werte (=Start-stellwert) zurück
+            Netzunterdeckung_regeln();
             Gradient(i,1)= (sum1-sum0)/c ; % Differenz aus Fehlerquadratsumme vor und nach der Leistungsflussberechnung durch die finite Differenz
         end
         %Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
@@ -687,45 +707,8 @@ function result = Netz_anregeln() %% 7. Netz anregeln:
 
         %5. Netzunterdeckung nach Lastausgleich wieder auf 0 bringen
 
-        %Regelreserve nach oben/unten in Abhängigkeit von positiver/negativer NU berechnen:
-        NU = Netzunterdeckung_aktuell(); %berechnet aktuelle Netzunterdeckung
-        [~,m]=size(Kraftwerksliste);
-        Sum_Reserve_KW = 0;
-        if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden, wenn die NU größer 0 ist (=Mangel)
-            for i=1:m
-                Kraftwerk = Kraftwerksliste(1,i);
-                Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_auf_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmax für alle KW
-            % to do: Reserve muss für Speicher korrigiert werden
-            end
-        else  % Kraftwerksverbund muss abgeregelt werden, wenn die NU kleiner 0 ist (=Überschuss)
-            for i=1:m
-                Kraftwerk = Kraftwerksliste(1,i);
-                Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_ab_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmin für alle KW
-            end
-        end
-        
-        if (Sum_Reserve_KW < 1)
-            fprintf("\nKeine Regelreserve mehr vorhanden!\n");
-            result = false;
-            return
-        end
-        
-        Anteil_NU = NU/Sum_Reserve_KW; %berechnet das Verhältnis aus Netzunterdeckung und Gesamtreserve
-
-        %AUF - / AB - Regelung der Stellwerte: 
-        [~,m]=size(Kraftwerksliste);   
-        for i=1:m
-            Kraftwerk = Kraftwerksliste(1,i);
-            if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden
-                RR = Kraftwerk.Regelreserve_auf();
-            else  % Kraftwerksverbund muss abgeregelt werden
-                RR = Kraftwerk.Regelreserve_ab();
-            end
-            Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + RR * Anteil_NU); %Anteil auf Regelreserve aufschalten und um das den Stellwert verändern (für alle KW)
-        end
-        NU = Netzunterdeckung_aktuell();
-        if (abs(NU) > 0.1)
-            fprintf("\nUnterdeckungsausgleich nach Regelung nicht moeglich! NU ist: %.2f kW\n", NU);
+        if Netzunterdeckung_regeln() == false
+            fprintf("\nUnterdeckungsausgleich vor Regelung nicht moeglich!\n");            
         end
         Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
         %Logfile_schreiben();
