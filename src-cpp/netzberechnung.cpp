@@ -196,11 +196,11 @@ void Netzberechnung::Netzmatrix_Leitungen_invers_berechnen()
 {
     int k = mKnotenliste.length();
     double G_Summe = 0.0;
-    Matrix Netzmatrix_Leitungen(k, k);
+    Matrix Netzmatrix_Leitungen(k-1, k-1);  // Ignoriere Knoten 0, ist Referenzpunkt
 
-    for (int i=1; i <= k; i++)
+    for (int i=2; i <= k; i++)// Ignoriere Knoten 0, ist Referenzpunkt
     {
-        for (int j=1; j <= k; j++)
+        for (int j=2; j <= k; j++)// Ignoriere Knoten 0, ist Referenzpunkt
         {
             if (i == j)
             {
@@ -210,7 +210,7 @@ void Netzberechnung::Netzmatrix_Leitungen_invers_berechnen()
                     if (int(lt->Startknoten()) == i || (int(lt->Endknoten()) == i))
                         G_Summe += G;
                 }
-                Netzmatrix_Leitungen.fill(i-1, j-1, G_Summe);
+                Netzmatrix_Leitungen.fill(i-2, j-2, G_Summe);// Ignoriere Knoten 0, ist Referenzpunkt
             }
             else
             {
@@ -221,27 +221,27 @@ void Netzberechnung::Netzmatrix_Leitungen_invers_berechnen()
                             ((int(lt->Startknoten()) == j) && (int(lt->Endknoten()) == i)))
                         G_Summe += G;
                 }
-                Netzmatrix_Leitungen.fill(i-1, j-1, -G_Summe);
+                Netzmatrix_Leitungen.fill(i-2, j-2, -G_Summe);// Ignoriere Knoten 0, ist Referenzpunkt
             }
         }
     }
 
     emit signalLog("Netzmatrix_Leitungen", Netzmatrix_Leitungen.toString());
 
-    Matrix vec(3,3);
+//    Matrix vec(3,3);
 
-    vec.fill(0, 0, 3.0);
-    vec.fill(0, 1, -2.0);
-    vec.fill(0, 2, 0.0);
-    vec.fill(1, 0, -2.0);
-    vec.fill(1, 1, 9.0);
-    vec.fill(1, 2, -4.0);
-    vec.fill(2, 0, 0.0);
-    vec.fill(2, 1, -4.0);
-    vec.fill(2, 2, 9.0);
+//    vec.fill(0, 0, 3.0);
+//    vec.fill(0, 1, -2.0);
+//    vec.fill(0, 2, 0.0);
+//    vec.fill(1, 0, -2.0);
+//    vec.fill(1, 1, 9.0);
+//    vec.fill(1, 2, -4.0);
+//    vec.fill(2, 0, 0.0);
+//    vec.fill(2, 1, -4.0);
+//    vec.fill(2, 2, 9.0);
 
-    Matrix tmp = vec.invert();
-    emit signalLog("tmp", tmp.toString());
+//    Matrix tmp = vec.invert();
+//    emit signalLog("tmp", tmp.toString());
 
     mNetzmatrix_Leitungen_invers = Netzmatrix_Leitungen.invert();
 }
@@ -252,17 +252,21 @@ void Netzberechnung::Leitungsfluss_berechnen()
     //k=length(Knotenliste);
     //n=length(Kraftwerksliste);
 
-    Matrix Leistungsvektor(mKnotenliste.length(), 1);
+    Matrix Leistungsvektor(mKnotenliste.length()-1, 1);// Ersten Knoten ignorieren, ist Referenzpunkt
 
     foreach (Knoten* kt, mKnotenliste)
     {
+        // Ersten Knoten ignorieren, ist Referenzpunkt
+        if (kt->K == 1)
+            continue;
+
         double P_Summe = 0.0;
         foreach (Kraftwerk_Last_Speicher* kw, mKraftwerksliste)
         {
             if (kw->Netzverknuepfungspunkt() == kt->K)
                 P_Summe += kw->Leistung_aktuell();
         }
-        Leistungsvektor.fill(int(kt->K -1), 0, P_Summe);
+        Leistungsvektor.fill(int(kt->K -2), 0, P_Summe);// Ersten Knoten ignorieren, ist Referenzpunkt
     }
 
     emit signalLog("Leistungsvektor", Leistungsvektor.toString());
@@ -270,7 +274,13 @@ void Netzberechnung::Leitungsfluss_berechnen()
 
     // Potentialvektor erstellen:
     // Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
-    Matrix Potentialvektor(mNetzmatrix_Leitungen_invers*Leistungsvektor);
+    Matrix Potentialvektor_reduced(mNetzmatrix_Leitungen_invers*Leistungsvektor);
+    Matrix Potentialvektor(mKnotenliste.length(), 1);
+    Potentialvektor.fill(0, 0, 0.0);
+    for (int i=1; i<mKnotenliste.length(); i++)
+    {
+        Potentialvektor.fill(i, 0, Potentialvektor_reduced.at(i-1, 0));
+    }
 
     emit signalLog("Potentialvektor", Potentialvektor.toString());
 
@@ -384,10 +394,12 @@ bool Netzberechnung::Netz_anregeln()
         {
             double x0 = kw->x_N;    // x0 - Start-stellwert
             kw->x_N += c;           // auf x0 die finite Differenz c aufaddieren
+            Netzunterdeckung_regeln();
             double sum0 = Leitungslastquadratsumme_berechnen(); // Funktion quadriert jede einzelne Leitungslast (die initialen) und summiert alle
             Leitungsfluss_berechnen();  // berechnet aktuellen Lastfluss durch Leitungen
             double sum1 = Leitungslastquadratsumme_berechnen(); // quadriert die neu berechneten Leitungslasten und summiert alle
             kw->x_N = x0;           // setzt x_N auf die ursprünglichen Werte (=Start-stellwert) zurück
+            Netzunterdeckung_regeln();
             Gradient.fill(int(kw->N - 1), 0, ((sum1 - sum0)/c));     // Differenz aus Fehlerquadratsumme vor und nach der Leistungsflussberechnung durch die finite Differenz
         }
         // Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
