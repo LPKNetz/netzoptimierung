@@ -1,5 +1,7 @@
 #include "matrix.h"
 #include <new>
+#include <vector>
+#include <cmath>
 
 Matrix::Matrix()
 {
@@ -12,13 +14,16 @@ Matrix::Matrix(int n, int m)
 {
     this->m_m = m;
     this->m_n = n;
-    //A = new double[n * m];
-    A = (double*)malloc(sizeof (double) * n * m);
+    printf("Matrix n=%i m=%i\n", n, m);
+    A = new double[n * m]();
+    //A = (double*)malloc(sizeof (double) * n * m);
 }
 
 Matrix::Matrix(const Matrix &src)
 {
+    printf("Copy Matrix n=%i m=%i\n", src.m_n, src.m_m);
     A = new double[src.m_n * src.m_m]();
+    //A = (double*)malloc(sizeof (double) * src.m_n * src.m_m);
     this->m_m = src.m_m;
     this->m_n = src.m_n;
 
@@ -33,16 +38,29 @@ Matrix::Matrix(const Matrix &src)
 
 Matrix::~Matrix()
 {
+    printf("Matrix destructor\n");
     //delete[] A;
 }
 
 double Matrix::at(int n, int m)
 {
+    if ((n < 0) || (m < 0) || (n >= this->m_n) || (m >= this->m_m))
+    {
+        printf("Matrix index out of bounds in method at\n");
+        return -1.11;
+    }
+
     return A[index(n, m)];
 }
 
 void Matrix::fill(int n, int m, double a)
 {
+    if ((n < 0) || (m < 0) || (n >= this->m_n) || (m >= this->m_m))
+    {
+        printf("Matrix index out of bounds in method fill\n");
+        return;
+    }
+
     A[index(n, m)] = a;
 }
 
@@ -87,7 +105,7 @@ Matrix Matrix::operator*(Matrix rhs)
     if (this->m_m != rhs.m_n)
         return Matrix (0, 0);
 
-    Matrix M(rhs.m_n, this->m_m);
+    Matrix M(this->m_n, rhs.m_m);
 
     for (int n=0; n<this->m_n; n++)
     {
@@ -97,10 +115,10 @@ Matrix Matrix::operator*(Matrix rhs)
 
             for (int i=0; i<rhs.m_n; i++)
             {
-                r += this->at(n,i) * rhs.at(i,n);
+                r += this->at(n,i) * rhs.at(i,m);
             }
 
-            M.A[index(n, m)] = r;
+            M.fill(n, m, r);
         }
     }
 
@@ -112,115 +130,97 @@ Matrix Matrix::invert()
 /**
  * Inverse of a Matrix
  * Gauss-Jordan Elimination
- * Originally written by https://github.com/peterabraham
+ * Originally written by https://martin-thoma.com/inverting-matrices/
  **/
 
-    int i = 0;  // Zeilenindex
-    int j = 0;  // Spaltenindex
-    int k = 0;
-    int n = 0;  // Zeilenanzahl
-    double **mat = nullptr; // Matrix data
-    double d = 0.0;
+    printf("Matrix invert\n");
 
-    n = this->m_n;
+    unsigned long n = unsigned(this->m_n);
 
-    // Allocating memory for matrix array
-    mat = new double*[2*n];
-    for (i = 0; i < 2*n; ++i)
-    {
-        mat[i] = new double[2*n]();
-    }
+    std::vector<double> line(2*n,0.0);
+    std::vector< std::vector<double> > A(n,line);
 
-    // Input matrix data
-    for(i = 0; i < n; ++i)
-    {
-        for(j = 0; j < n; ++j)
-        {
-            mat[i][j] = this->at(j, j);
+    // Read input data
+    for (unsigned long i=0; i<n; i++) {
+        for (unsigned long j=0; j<n; j++) {
+            A[i][j] = this->at(int(i), int(j));
         }
     }
 
-    // Initializing Right-hand side to identity matrix
-    for(i = 0; i < n; ++i)
-    {
-        for(j = 0; j < 2*n; ++j)
-        {
-            if(j == (i+n))
-            {
-                mat[i][j] = 1;
+    for (unsigned long i=0; i<n; i++) {
+            A[i][n+i] = 1.0;
+        }
+
+    for (unsigned long i=0; i<n; i++) {
+        // Search for maximum in this column
+        double maxEl = abs(A[i][i]);
+        unsigned long maxRow = i;
+        for (unsigned long k=i+1; k<n; k++) {
+            if (abs(A[k][i]) > maxEl) {
+                maxEl = A[k][i];
+                maxRow = k;
             }
         }
-    }
 
-    // Partial pivoting
-    for(i = n; i > 1; --i)
-    {
-        if(mat[i-1][1] < mat[i][1])
-        {
-            for(j = 0; j < 2*n; ++j)
-            {
-                d = mat[i][j];
-                mat[i][j] = mat[i-1][j];
-                mat[i-1][j] = d;
-            }
+        // Swap maximum row with current row (column by column)
+        for (unsigned long k=i; k<2*n;k++) {
+            double tmp = A[maxRow][k];
+            A[maxRow][k] = A[i][k];
+            A[i][k] = tmp;
         }
-    }
 
-    // Reducing To Diagonal Matrix
-    for(i = 0; i < n; ++i)
-    {
-        for(j = 0; j < 2*n; ++j)
-        {
-            if(j != i)
-            {
-                d = mat[j][i] / mat[i][i];
-                for(k = 0; k < n*2; ++k)
-                {
-                    mat[j][k] -= mat[i][k]*d;
+        // Make all rows below this one 0 in current column
+        for (unsigned long k=i+1; k<n; k++) {
+            double c = -A[k][i]/A[i][i];
+            for (unsigned long j=i; j<2*n; j++) {
+                if (i==j) {
+                    A[k][j] = 0.0;
+                } else {
+                    A[k][j] += c * A[i][j];
                 }
             }
         }
     }
 
-    // Reducing To Unit Matrix
-    for(i = 0; i < n; ++i)
-    {
-        d = mat[i][i];
-        for(j = 0; j < 2*n; ++j)
-        {
-            mat[i][j] = mat[i][j]/d;
+    // Solve equation Ax=b for an upper triangular matrix A
+    for (signed long ii=long(n)-1; ii>=0; ii--) {
+        unsigned long i = unsigned(ii);
+        for (unsigned long k=n; k<2*n;k++) {
+            A[i][k] /= A[i][i];
+        }
+        // this is not necessary, but the output looks nicer:
+        //A[i][i] = 1.0;
+
+        for (signed long tmp_rowModify=long(i)-1;tmp_rowModify>=0; tmp_rowModify--) {
+            unsigned long rowModify = unsigned(tmp_rowModify);
+            for (unsigned long columModify=n;columModify<2*n;columModify++) {
+                A[rowModify][columModify] -= A[i][columModify]
+                                             * A[rowModify][i];
+            }
+            // this is not necessary, but the output looks nicer:
+            //A[rowModify][i] = 0;
         }
     }
 
-    // Inverse of the input matrix
-    Matrix inv(n, n);
-
-    for(i=0; i < n; ++i)
-    {
-        for(j = n; j < 2*n; ++j)
-        {
-            inv.A[index(i, j)] = mat[i][j];
+    // Write output data
+    Matrix inv(this->m_n, this->m_m);
+    for (unsigned long i=0; i<n; i++) {
+        for (unsigned long j=0; j<n; j++) {
+            inv.fill(int(i), int(j), A[i][n+j]);
         }
     }
-
-    // Deleting the memory allocated
-    for (i = 0; i < n; ++i)
-    {
-        //delete[] mat[i];
-    }
-    //delete[] mat;
 
     return inv;
 }
 
 QString Matrix::toString()
 {
-    QString res;
-    for (int i=0; i < this->m_m; i++)
+    QString res = "\n";
+    for (int i=0; i < this->m_n; i++)
     {
-        for (int j=0; j < this->m_n; j++)
+        for (int j=0; j < this->m_m; j++)
         {
-            res += QString().sprintf("%8.4lf\t", this->at(i, j));
+            res += QString().sprintf("%17.15lf\t", this->at(i, j));
         }
         res += "\n";
     }

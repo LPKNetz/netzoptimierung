@@ -24,7 +24,7 @@ public:
 
 private:
     int m_n, m_m;
-    double *A;
+    double* A;
 
     int index( int n, int m ) const { return m + m_m * n; }
 

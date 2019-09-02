@@ -226,6 +226,23 @@ void Netzberechnung::Netzmatrix_Leitungen_invers_berechnen()
         }
     }
 
+    emit signalLog("Netzmatrix_Leitungen", Netzmatrix_Leitungen.toString());
+
+    Matrix vec(3,3);
+
+    vec.fill(0, 0, 3.0);
+    vec.fill(0, 1, -2.0);
+    vec.fill(0, 2, 0.0);
+    vec.fill(1, 0, -2.0);
+    vec.fill(1, 1, 9.0);
+    vec.fill(1, 2, -4.0);
+    vec.fill(2, 0, 0.0);
+    vec.fill(2, 1, -4.0);
+    vec.fill(2, 2, 9.0);
+
+    Matrix tmp = vec.invert();
+    emit signalLog("tmp", tmp.toString());
+
     mNetzmatrix_Leitungen_invers = Netzmatrix_Leitungen.invert();
 }
 
@@ -245,12 +262,17 @@ void Netzberechnung::Leitungsfluss_berechnen()
             if (kw->Netzverknuepfungspunkt() == kt->K)
                 P_Summe += kw->Leistung_aktuell();
         }
-        Leistungsvektor.fill(int(kt->K -1), 1, P_Summe);
+        Leistungsvektor.fill(int(kt->K -1), 0, P_Summe);
     }
+
+    emit signalLog("Leistungsvektor", Leistungsvektor.toString());
+    emit signalLog("mNetzmatrix_Leitungen_invers", mNetzmatrix_Leitungen_invers.toString());
 
     // Potentialvektor erstellen:
     // Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
     Matrix Potentialvektor(mNetzmatrix_Leitungen_invers*Leistungsvektor);
+
+    emit signalLog("Potentialvektor", Potentialvektor.toString());
 
     // Lastfluss auf Leitungen berechnen:
     foreach (Leitung* lt, mLeitungliste)
@@ -258,8 +280,8 @@ void Netzberechnung::Leitungsfluss_berechnen()
         double R = lt->Leitungswiderstand();
         quint32 s = lt->Startknoten();
         quint32 e = lt->Endknoten();
-        double Startpotential = Potentialvektor.at(int(s -1), 1);
-        double Endpotential = Potentialvektor.at(int(e -1), 1);
+        double Startpotential = Potentialvektor.at(int(s -1), 0);
+        double Endpotential = Potentialvektor.at(int(e -1), 0);
         double Potentialdifferenz = Startpotential - Endpotential;
         double p = Potentialdifferenz / R;
         lt->Aktuelle_Leistung_setzen_in_kW(p);
@@ -366,7 +388,7 @@ bool Netzberechnung::Netz_anregeln()
             Leitungsfluss_berechnen();  // berechnet aktuellen Lastfluss durch Leitungen
             double sum1 = Leitungslastquadratsumme_berechnen(); // quadriert die neu berechneten Leitungslasten und summiert alle
             kw->x_N = x0;           // setzt x_N auf die ursprünglichen Werte (=Start-stellwert) zurück
-            Gradient.fill(int(kw->N - 1), 1, ((sum1 - sum0)/c));     // Differenz aus Fehlerquadratsumme vor und nach der Leistungsflussberechnung durch die finite Differenz
+            Gradient.fill(int(kw->N - 1), 0, ((sum1 - sum0)/c));     // Differenz aus Fehlerquadratsumme vor und nach der Leistungsflussberechnung durch die finite Differenz
         }
         // Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
 
@@ -377,7 +399,7 @@ bool Netzberechnung::Netz_anregeln()
             // 3. Delta bilden
             if (kw->R_N == Fremdregelung)
             {
-                double dx_N = -Gradient.at(int(kw->N -1), 1) * a_k; // Delta-Vektor aus Gradient in entgegengesetzte Richtung um die Schrittweite a_k entlang gehen
+                double dx_N = -Gradient.at(int(kw->N -1), 0) * a_k; // Delta-Vektor aus Gradient in entgegengesetzte Richtung um die Schrittweite a_k entlang gehen
                 kw->SollwertSetzen(kw->x_N + dx_N);
             }
         }
