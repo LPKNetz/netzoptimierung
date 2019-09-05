@@ -14,14 +14,14 @@ Matrix::Matrix(int n, int m)
 {
     this->m_m = m;
     this->m_n = n;
-    printf("Matrix n=%i m=%i\n", n, m);
+    //printf("Matrix n=%i m=%i\n", n, m);
     A = new double[n * m]();
     //A = (double*)malloc(sizeof (double) * n * m);
 }
 
 Matrix::Matrix(const Matrix &src)
 {
-    printf("Copy Matrix n=%i m=%i\n", src.m_n, src.m_m);
+    //printf("Copy Matrix n=%i m=%i\n", src.m_n, src.m_m);
     A = new double[src.m_n * src.m_m]();
     //A = (double*)malloc(sizeof (double) * src.m_n * src.m_m);
     this->m_m = src.m_m;
@@ -38,7 +38,7 @@ Matrix::Matrix(const Matrix &src)
 
 Matrix::~Matrix()
 {
-    printf("Matrix destructor\n");
+    //printf("Matrix destructor\n");
     //delete[] A;
 }
 
@@ -133,7 +133,7 @@ Matrix Matrix::invert()
  * Originally written by https://martin-thoma.com/inverting-matrices/
  **/
 
-    printf("Matrix invert\n");
+    //printf("Matrix invert\n");
 
     unsigned long n = unsigned(this->m_n);
 
