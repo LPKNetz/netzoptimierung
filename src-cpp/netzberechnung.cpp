@@ -678,7 +678,7 @@ double Netzberechnung::Nennleistung_zweitgroesste_Einheit()
         if (p < kw->P_N)
         {
             if (p > pp)
-                pp = 0;
+                pp = p;
             p = kw->P_N;
         }
         else if (pp < kw->P_N)
