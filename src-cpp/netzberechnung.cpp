@@ -161,16 +161,16 @@ void Netzberechnung::Lastgang_rechnen()
     for (int t=1; t <=zeitschlitze; t++)
     {
         QDateTime dateNow = QDateTime::currentDateTime();
-        qint64 laufzeit = dateStart.secsTo(dateNow);
+        qint64 laufzeit = dateStart.msecsTo(dateNow);
         qint64 gesamtzeit = laufzeit * zeitschlitze / t;
         qint64 restzeit = gesamtzeit - laufzeit;
 //        QString laufzeitstring = QDateTime::fromSecsSinceEpoch(laufzeit).toString("hh:mm:ss");
 //        QString restzeitstring = QDateTime::fromSecsSinceEpoch(restzeit).toString("hh:mm:ss");
 //        QString gesamtzeitstring = QDateTime::fromSecsSinceEpoch(gesamtzeit).toString("hh:mm:ss");
 
-        QString laufzeitstring = QString().sprintf("%i s", int(laufzeit));
-        QString restzeitstring = QString().sprintf("%i s", int(restzeit));
-        QString gesamtzeitstring = QString().sprintf("%i s", int(gesamtzeit));
+        QString laufzeitstring = QString().sprintf("%i ms", int(laufzeit));
+        QString restzeitstring = QString().sprintf("%i ms", int(restzeit));
+        QString gesamtzeitstring = QString().sprintf("%i ms", int(gesamtzeit));
 
         emit signalLog("Time", QString().sprintf("Berechne Schritt %i von %i. Laufzeit: %s Restzeit: %s Gesamtzeit: %s",
                                                  t, zeitschlitze, laufzeitstring.toUtf8().data(),
@@ -226,7 +226,7 @@ void Netzberechnung::Netzmatrix_Leitungen_invers_berechnen()
         }
     }
 
-    emit signalLog("Netzmatrix_Leitungen", Netzmatrix_Leitungen.toString());
+//    emit signalLog("Netzmatrix_Leitungen", Netzmatrix_Leitungen.toString());
 
 //    Matrix vec(3,3);
 
@@ -269,8 +269,8 @@ void Netzberechnung::Leitungsfluss_berechnen()
         Leistungsvektor.fill(int(kt->K -2), 0, P_Summe);// Ersten Knoten ignorieren, ist Referenzpunkt
     }
 
-    emit signalLog("Leistungsvektor", Leistungsvektor.toString());
-    emit signalLog("mNetzmatrix_Leitungen_invers", mNetzmatrix_Leitungen_invers.toString());
+//    emit signalLog("Leistungsvektor", Leistungsvektor.toString());
+//    emit signalLog("mNetzmatrix_Leitungen_invers", mNetzmatrix_Leitungen_invers.toString());
 
     // Potentialvektor erstellen:
     // Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
@@ -282,7 +282,7 @@ void Netzberechnung::Leitungsfluss_berechnen()
         Potentialvektor.fill(i, 0, Potentialvektor_reduced.at(i-1, 0));
     }
 
-    emit signalLog("Potentialvektor", Potentialvektor.toString());
+//    emit signalLog("Potentialvektor", Potentialvektor.toString());
 
     // Lastfluss auf Leitungen berechnen:
     foreach (Leitung* lt, mLeitungliste)
@@ -897,16 +897,6 @@ void Netzberechnung::keyPressEvent(QKeyEvent *event)
 
 void Netzberechnung::paintEvent(QPaintEvent *event)
 {
-//    QPainter painter;
-//    painter.begin(this);
-//    painter.setRenderHint(QPainter::Antialiasing);
-
-//    painter.setBrush(QBrush(Qt::yellow));
-//    painter.setPen(Qt::black);
-//    painter.drawRect(10, 10, 50, 50);
-
-//    painter.end();
-
     paintNetz(this);
 
     event->accept();

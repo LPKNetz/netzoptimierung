@@ -12,7 +12,7 @@ void Trend::TrendLaden(QString filename)
 
 qreal Trend::StellwertBeiZeit(QDateTime time)
 {
-    return 0.5;
+    return -0.3;
 }
 
 bool Trend::isNull()
