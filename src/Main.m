@@ -35,16 +35,42 @@ Leitungsliste = Leitungen_initialisieren();
 global Kraftwerksliste;
 Kraftwerksliste = Kraftwerke_initialisieren();
 
-
+global Tageskosten
 %% Programm
 Netzmatrix_Leitungen_invers_berechnen();
-Lastgang_rechnen();
+
+
+
+
+
 
 %% Optimierer
 
+tic
 
+n=length(Kraftwerksliste);
+k=length(Knotenliste);
+costs = zeros(k,2)
 
+for i=1:k 
 
+Knotenliste = Knoten_initialisieren();
+Leitungsliste = Leitungen_initialisieren();
+Kraftwerksliste = Kraftwerke_initialisieren();
+    
+% Speicher an alten Knoten löschen und an aktuellen Knoten verschieben.    
+Kraftwerksliste(1,11).K = i;
+
+% Berechnen
+Lastgang_rechnen();
+
+% Kosten abspeichern
+costs(i,1) = Tageskosten;
+costs(i,2) = Kraftwerksliste(1,11).K;  % Orts-Kontrolle
+costs 
+end
+
+toc
 %% Animation beenden
 finishAnimation(animationWriter);
 
@@ -137,7 +163,8 @@ function Lastgang_rechnen()
     %global Knotenliste;
     global Leitungsliste;
     %global Kraftwerksliste;
-
+    global Tageskosten
+    
     Leitungsfluss_berechnen();
     Logfile_schreiben();
     if (Netz_anregeln() == false)
@@ -181,7 +208,7 @@ function Lastgang_rechnen()
 
         Grafik_plotten();
         Logfile_schreiben();
-        clc;
+        %clc;
         Tageskosten
         for f=1:u
             Leitung=Leitungsliste(1,f);
@@ -202,7 +229,7 @@ function Lastgang_rechnen()
     maxpowerflow;
     delta_mpf_PL = (maxpowerflow./Bemessungsleistung)-1;
     Leitungsauslastung_errechnet = maxpowerflow./Bemessungsleistung;
-
+    
     clear time;
     % to do: mehr clear ...
 end
@@ -1187,7 +1214,7 @@ function cost = Netzkosten_berechnen()
         cv = cv + Knoten.VariableKosten();
     end
     CK = ck + cv;
-    cost = CL + CN + CK
+    cost = CL + CN + CK;
 end
 
 % Funktionen für den Netzregler:
