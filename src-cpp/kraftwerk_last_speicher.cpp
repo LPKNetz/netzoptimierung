@@ -37,6 +37,9 @@ Kraftwerk_Last_Speicher::Kraftwerk_Last_Speicher(QObject *parent,
     this->o_NB = oNB;
     this->TQ = tq;
     this->trend = new Trend(this);
+    connect(this->trend, SIGNAL(signalLog(QString, QString)), this, SIGNAL(signalLog(QString, QString)));
+    if (!tq.isEmpty())
+        this->trend->TrendLaden("../data/" + tq);
     this->t_alt = QDateTime();
     this->delta_t_alt = 15 * 60;
 }
@@ -79,6 +82,8 @@ bool Kraftwerk_Last_Speicher::parseCSVline(QString line)
     this->o_MK = bool(fields.at(13).toInt());
     this->o_NB = bool(fields.at(14).toInt());
     this->TQ = fields.at(15);
+    if (!this->TQ.isEmpty())
+        this->trend->TrendLaden("../data/" + this->TQ);
 
     return true;
 }
@@ -88,14 +93,15 @@ void Kraftwerk_Last_Speicher::Zeit_setzen(QDateTime time)
     if (t_alt.isNull())
     {
         t_alt = time;
-        return;
     }
+    else
+    {
+        this->delta_t_alt = (quint64)this->t_alt.secsTo(time);
+        this->t_alt = time;
 
-    this->delta_t_alt = (quint64)this->t_alt.secsTo(time);
-    this->t_alt = time;
-
-    if (this->istSpeicher())
-        this->Speicher_rechnen();
+        if (this->istSpeicher())
+            this->Speicher_rechnen();
+    }
 
     if (this->trend->isNull())
         return;

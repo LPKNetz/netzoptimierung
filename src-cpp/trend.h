@@ -20,10 +20,13 @@ public:
     QList<T_Datenpunkt> m_trend;
 
     void TrendLaden(QString filename);
+    void vonJSONladen(QString filename);
+    void vonCSVladen(QString filename);
     qreal StellwertBeiZeit(QDateTime time);
     bool isNull();
 
 signals:
+    void signalLog(QString category, QString text);
 
 public slots:
 };
