@@ -40,36 +40,67 @@ global Tageskosten
 Netzmatrix_Leitungen_invers_berechnen();
 
 
-
-
-
-
 %% Optimierer
 
 tic
-
-n=length(Kraftwerksliste);
 k=length(Knotenliste);
-costs = zeros(k,2)
+n = 1;   % Maximale Anzahl an Speichern im Netz
+f = k;  % Anzahl an Knoten im Netz, s.o. k=length(Knotenliste)
 
-for i=1:k 
 
-Knotenliste = Knoten_initialisieren();
-Leitungsliste = Leitungen_initialisieren();
-Kraftwerksliste = Kraftwerke_initialisieren();
-    
-% Speicher an alten Knoten löschen und an aktuellen Knoten verschieben.    
-Kraftwerksliste(1,11).K = i;
+start = zeros(1, f);    % Startwert für jede FOR Schleife 
+limit = [f+1,f+1,f+1];    % Endwert für jede FOR Schleife 
+Kombinationsmatrix(1,f+1)=0;
+tmp=0;
+g=f+1;
 
-% Berechnen
-Lastgang_rechnen();
+index = start; 
+ready = false; 
+while ~ready 
+   Knotenliste = Knoten_initialisieren();
+   Leitungsliste = Leitungen_initialisieren();
+   Kraftwerksliste = Kraftwerke_initialisieren();
+   
+   % Speicher an alten Knoten löschen und an aktuellen Knoten verschieben
+   if index(1,1) == 0
+       Kraftwerksliste(1,11).K = 4;
+   else
+   Kraftwerksliste(1,11).K = index(1,1);
+   %Kraftwerksliste(1,12).K = index(1,2);
+   %Kraftwerksliste(1,13).K = index(1,3);
+   end
+   
+   % Aktuelle Kombination in Matrix schreiben
+   tmp = tmp + 1;
+   Kombinationsmatrix(tmp,2:g)=index;
+   
+   % Berechnen
+   Lastgang_rechnen();
+   
+   % Kosten der aktuellen Kombination in Matrix abspeichern
+   Kombinationsmatrix(tmp,1)= Tageskosten;
+   
+   f = n; 
+   while 1  % Quelle: https://www.gomatlab.de/variable-zahl-verschachtelter-for-schleifen-t14746.html
+      index(f) = index(f) + 1; 
+      if index(f) < limit(f) 
+         break;   % k-ter Index um 1 erhöht 
+      else 
+         index(f) = start(f); 
+         f = f - 1; 
+         if f == 0  % All iterations are ready 
+            ready = true;  % Stop outer WHILE loop 
+            break;    % Break inner WHILE loop 
+         end
+      end 
+   end 
+end 
 
-% Kosten abspeichern
-costs(i,1) = Tageskosten;
-costs(i,2) = Kraftwerksliste(1,11).K;  % Orts-Kontrolle
-costs 
-end
-
+fprintf('Wert des Eintrages = Platzierungsort (Knotennummer):\n')
+fprintf('\n')
+fprintf(' T.kosten  S1    S2    S3    S4    S5    S6    S7    S8    S9\n')
+%fprintf('------------------------------------------------------------\n')
+Kombinationsmatrix
 toc
 %% Animation beenden
 finishAnimation(animationWriter);
@@ -208,7 +239,7 @@ function Lastgang_rechnen()
 
         Grafik_plotten();
         Logfile_schreiben();
-        %clc;
+        clc;
         Tageskosten
         for f=1:u
             Leitung=Leitungsliste(1,f);
