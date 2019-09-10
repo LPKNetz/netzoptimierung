@@ -45,6 +45,7 @@ void Netzberechnung::Knoten_initialisieren(QString filename)
         QString lineStr = QString::fromUtf8(line).trimmed();
 
         Knoten* knoten = new Knoten(this);
+        connect(knoten, SIGNAL(signalLog(QString, QString)), this, SIGNAL(signalLog(QString, QString)));
         if (knoten->parseCSVline(lineStr))
         {
             knoten->setLogger(mLogger);
@@ -84,6 +85,7 @@ void Netzberechnung::Leitungen_initialisieren(QString filename)
         QString lineStr = QString::fromUtf8(line).trimmed();
 
         Leitung* leitung = new Leitung(this);
+        connect(leitung, SIGNAL(signalLog(QString, QString)), this, SIGNAL(signalLog(QString, QString)));
         if (leitung->parseCSVline(lineStr))
         {
             leitung->setLogger(mLogger);
@@ -122,6 +124,7 @@ void Netzberechnung::Kraftwerke_initialisieren(QString filename)
         QString lineStr = QString::fromUtf8(line).trimmed();
 
         Kraftwerk_Last_Speicher* kraftwerk = new Kraftwerk_Last_Speicher(this);
+        connect(kraftwerk, SIGNAL(signalLog(QString, QString)), this, SIGNAL(signalLog(QString, QString)));
         if (kraftwerk->parseCSVline(lineStr))
         {
             kraftwerk->setLogger(mLogger);
@@ -178,7 +181,10 @@ void Netzberechnung::Lastgang_rechnen()
                                                  gesamtzeitstring.toUtf8().data()));
 
         QDateTime d = QDateTime::fromString("2019-07-04T00:50:00+02:00", Qt::ISODate);
-        Zeit_setzen(d.addSecs(t*15*60));
+        QDateTime simulatedTime = d.addSecs(t*15*60);
+        emit signalLog("Time", QString().sprintf("Aktuelle unixtime: %i", int(simulatedTime.toSecsSinceEpoch())));
+
+        Zeit_setzen(simulatedTime);
 
         if (!Netz_anregeln())
         {
