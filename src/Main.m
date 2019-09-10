@@ -36,11 +36,21 @@ global Kraftwerksliste;
 Kraftwerksliste = Kraftwerke_initialisieren();
 
 global Tageskosten
+global counter
+global Anzahl_overflow
+global Leistung_total_overflow
 %% Programm
 Netzmatrix_Leitungen_invers_berechnen();
-
+Lastgang_rechnen();
+Anzahl_Leitungen = Anzahl_overflow
+Leistung_total_overflow 
+PoPL_ratio = Leistung_total_overflow / Netzeinspeiseleistung_aktuell() %
+PoPL_ratio_3 = Leistung_total_overflow / (Netzeinspeiseleistung_aktuell() - Netzausspeiseleistung_aktuell()) %
 
 %% Optimierer
+
+%INPUT:
+
 
 tic
 k=length(Knotenliste);
@@ -50,9 +60,10 @@ f = k;  % Anzahl an Knoten im Netz, s.o. k=length(Knotenliste)
 
 start = zeros(1, f);    % Startwert für jede FOR Schleife 
 limit = [f+1,f+1,f+1];    % Endwert für jede FOR Schleife 
-Kombinationsmatrix(1,f+1)=0;
+g=f+3;
+Kombinationsmatrix(1,g)=0;
 tmp=0;
-g=f+1;
+
 
 index = start; 
 ready = false; 
@@ -72,13 +83,17 @@ while ~ready
    
    % Aktuelle Kombination in Matrix schreiben
    tmp = tmp + 1;
-   Kombinationsmatrix(tmp,2:g)=index;
+   Kombinationsmatrix(tmp,4:g)=index;
    
    % Berechnen
    Lastgang_rechnen();
    
    % Kosten der aktuellen Kombination in Matrix abspeichern
    Kombinationsmatrix(tmp,1)= Tageskosten;
+   
+   % Leitungsinformationen der aktuellen Kombination in Matrix abspeichern
+   Kombinationsmatrix(tmp,2) = Anzahl_overflow; % Anzahl Leitungen nicht im Arbeitsbereich
+   Kombinationsmatrix(tmp,3) = Leistung_total_overflow; % Summe Bemessungsleistung nicht im Arbeitsbereich
    
    f = n; 
    while 1  % Quelle: https://www.gomatlab.de/variable-zahl-verschachtelter-for-schleifen-t14746.html
@@ -98,9 +113,52 @@ end
 
 fprintf('Wert des Eintrages = Platzierungsort (Knotennummer):\n')
 fprintf('\n')
-fprintf(' T.kosten  S1    S2    S3    S4    S5    S6    S7    S8    S9\n')
-%fprintf('------------------------------------------------------------\n')
+fprintf('#overflow Poverflow T.kosten  S1    S2    S3    S4    S5    S6    S7    S8    S9 \n')
+
 Kombinationsmatrix
+
+%Die billigste Kombination aus der Kombinationsmatrix finden:
+    [n,m]=size(Kombinationsmatrix);
+    p = 10e30;  % p = Extrem große Zahl
+    Kombination = zeros(1,g); 
+    for i=1:n
+        if Kombinationsmatrix(i,1) < p
+            p = Kombinationsmatrix(i,1); 
+            Kombination(1,:)= Kombinationsmatrix(i,:); % billigste Kombination aus Kombinationsmatrix extrahieren
+            
+        end
+    end
+fprintf('Kostengünstigste Speicher-Kombination:\n')
+Kombination
+
+pp=0;
+Standort = zeros(k,2);
+for i=4:m % Anzahl Speicher
+    if Kombination(1,i) > 0
+        pp = pp + 1;
+        Standort(pp,1) = i - 3; % 1. Spalte = Speichernummer
+        Standort(pp,2) = Kombination(1,i); % 2. Spalte = Knotennummer
+    end
+end  
+Anzahl_Speicher = pp
+Anzahl_Leitungen = Kombination(1,2)
+Leistung_total_overflow = Kombination(1,3)
+
+PoPL_ratio = Leistung_total_overflow / Netzeinspeiseleistung_aktuell()
+PoPL_ratio_3 = Leistung_total_overflow / (Netzeinspeiseleistung_aktuell() - Netzausspeiseleistung_aktuell()) %
+
+
+
+SL_ratio = Anzahl_Speicher / Anzahl_Leitungen;
+fprintf('Kostengünstigstes Verhältnis aus Speichern und ausgebauten Leitungen:  %.2f \n' , SL_ratio )
+    
+
+
+
+    clear i
+    clear n
+
+
 toc
 %% Animation beenden
 finishAnimation(animationWriter);
@@ -195,6 +253,14 @@ function Lastgang_rechnen()
     global Leitungsliste;
     %global Kraftwerksliste;
     global Tageskosten
+    global counter
+    global Anzahl_overflow
+    global Leistung_total_overflow
+    
+    counter = 0;
+    Anzahl_overflow = 0;
+    Leistung_total_overflow = 0;
+    
     
     Leitungsfluss_berechnen();
     Logfile_schreiben();
@@ -235,31 +301,60 @@ function Lastgang_rechnen()
             fprintf("\nNetz im laufenden Betrieb nicht regelbar!\n");
             break;
         end
+        
         Tageskosten = Tageskosten + Netzkosten_berechnen();
-
+        
+        
         Grafik_plotten();
         Logfile_schreiben();
         clc;
-        Tageskosten
-        for f=1:u
+
+        
+        for f=1:u  % Konstruktion von maxpowerflow 
             Leitung=Leitungsliste(1,f);
-            %Leitung.p_L*Leitung.P_L;
-            %maxpower;
             if (abs(Leitung.p_L*Leitung.P_L)) > maxpowerflow(f,1)
                 maxpowerflow(f,1)=abs(Leitung.p_L*Leitung.P_L);
             end
+ 
+
+        end
+        
+        
+        
+        
+        
+    end
+    
+    
+
+    
+    %       Analyse und Testing:
+    
+    
+    Bemessungsleistung=zeros(u,1);
+    for i=1:u %Counter berechnen und Bemessungsleistung aus Originaltabelle / Liste holen
+        Leitung=Leitungsliste(1,i);
+        Bemessungsleistung(i,1) = Leitung.P_L;
+            % um Gesamtanzahl aller in den 96 Zeitschlitzen überlasteten Leitungen herauszufinden:
+            if (abs(maxpowerflow)) > Leitung.P_L
+                counter = counter + 1;
+            end
+    end
+    maxpowerflow %
+    counter; % ist eigentlich auch die Anzahl von overflow-Leitungen
+    delta_mpf_PL = (maxpowerflow./Bemessungsleistung)-1 %
+    Leitungsauslastung_errechnet = maxpowerflow./Bemessungsleistung %
+    Leistungsdifferenz = maxpowerflow - Bemessungsleistung %
+    
+    for i=1:u
+        if Leitungsauslastung_errechnet(i,1) > 1
+    Anzahl_overflow = Anzahl_overflow + 1; % Anzahl Leitungen nicht im Arbeitsbereich
+    Leistung_total_overflow = Leistung_total_overflow + Leistungsdifferenz(i,1);  % Summe Bemessungsleistung nicht im Arbeitsbereich
         end
     end
-
-    Bemessungsleistung=zeros(u,1);
-    for i=1:u %Bemessungsleistung aus Originaltabelle / Liste holen
-        Leitung=Leitungsliste(1,i);
-        Bemessungsleistung(i,1)=Leitung.P_L;
-    end
-
-    maxpowerflow;
-    delta_mpf_PL = (maxpowerflow./Bemessungsleistung)-1;
-    Leitungsauslastung_errechnet = maxpowerflow./Bemessungsleistung;
+    
+    Anzahl_overflow %
+    Leistung_total_overflow %
     
     clear time;
     % to do: mehr clear ...
