@@ -20,10 +20,18 @@ public:
 private slots:
     void on_actionLastgang_rechnen_triggered();
 
+    void on_actionOptimizer_Rechnen_triggered();
+
+    void slot_finished();
+
+    void slotResult(QList<bool> kombinationsListe, double Tageskosten);
+
 private:
     Ui::MainWindow *ui;
     Netzberechnung *mNetzberechnung;
     Logger mLogger;
+
+    QList<QList<bool>> threadfahrplan;
 };
 
 #endif // MAINWINDOW_H

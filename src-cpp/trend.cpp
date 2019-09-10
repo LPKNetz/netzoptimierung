@@ -104,7 +104,7 @@ void Trend::vonCSVladen(QString filename)
 
         m_trend.append(dp);
     }
-    emit signalLog("Trend", QString().setNum(m_trend.length()) + " Datenpunkte aus CSV geleaden");
+    //emit signalLog("Trend", QString().setNum(m_trend.length()) + " Datenpunkte aus CSV geleaden");
 }
 
 qreal Trend::StellwertBeiZeit(QDateTime time)
@@ -134,8 +134,8 @@ qreal Trend::StellwertBeiZeit(QDateTime time)
         unixtime = time.toSecsSinceEpoch();
         emit signalLog("Trend", QString().sprintf("Zeitstempel t=%i nicht gefunden!", unixtime));
     }
-    else
-        emit signalLog("Trend", QString().sprintf("Datenpunkt t=%i gefunden. Leistung: %6.4lf", unixtime, power));
+//    else
+//        emit signalLog("Trend", QString().sprintf("Datenpunkt t=%i gefunden. Leistung: %6.4lf", unixtime, power));
 
     return power;
 }

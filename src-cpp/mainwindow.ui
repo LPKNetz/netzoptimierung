@@ -34,7 +34,7 @@
 </string>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <property name="tabsClosable">
        <bool>false</bool>
@@ -57,7 +57,14 @@
          <number>0</number>
         </property>
         <item row="0" column="0">
-         <widget class="Netzberechnung" name="widget_Netzberechnung" native="true"/>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Keine Grafik in Parallelrechensystem verfügbar.</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
@@ -81,7 +88,7 @@
      <x>0</x>
      <y>0</y>
      <width>786</width>
-     <height>22</height>
+     <height>29</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuProgramm">
@@ -89,6 +96,7 @@
      <string>Programm</string>
     </property>
     <addaction name="actionLastgang_rechnen"/>
+    <addaction name="actionOptimizer_Rechnen"/>
    </widget>
    <addaction name="menuProgramm"/>
   </widget>
@@ -98,16 +106,13 @@
     <string>Lastgang rechnen</string>
    </property>
   </action>
+  <action name="actionOptimizer_Rechnen">
+   <property name="text">
+    <string>Optimizer Rechnen</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
- <customwidgets>
-  <customwidget>
-   <class>Netzberechnung</class>
-   <extends>QWidget</extends>
-   <header>netzberechnung.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

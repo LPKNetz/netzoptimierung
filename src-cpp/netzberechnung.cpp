@@ -2,9 +2,22 @@
 #include <QFile>
 #include <QtMath>
 
-Netzberechnung::Netzberechnung(QWidget *parent) : QWidget(parent)
+Netzberechnung::Netzberechnung(QObject *parent) : QThread(parent)
 {
+    mLogger = nullptr;
+    //moveToThread(this);
+}
 
+Netzberechnung::~Netzberechnung()
+{
+    foreach(Kraftwerk_Last_Speicher* kw, mKraftwerksliste)
+        delete kw;
+
+    foreach(Leitung* lt, mLeitungliste)
+        delete lt;
+
+    foreach(Knoten* kt, mKnotenliste)
+        delete kt;
 }
 
 void Netzberechnung::setLogger(Logger *logger)
@@ -18,7 +31,7 @@ void Netzberechnung::Netz_initialisieren()
     Knoten_initialisieren("../data/Knotentabelle.csv");
     Leitungen_initialisieren("../data/Leitungstabelle.csv");
     Kraftwerke_initialisieren("../data/Kraftwerke_Lasten_Speichertabelle.csv");
-    emit signalLog("Info", "Netz ist initialisiert");
+    log("Info", "Netz ist initialisiert");
 }
 
 void Netzberechnung::Knoten_initialisieren(QString filename)
@@ -29,7 +42,7 @@ void Netzberechnung::Knoten_initialisieren(QString filename)
     file.setFileName(filename);
     if (!file.open(QIODevice::ReadOnly))
     {
-        emit signalLog("Error", "Knoten_initialisieren: Kann Datei nicht öffnen");
+        log("Error", "Knoten_initialisieren: Kann Datei nicht öffnen");
         return;
     }
 
@@ -48,14 +61,15 @@ void Netzberechnung::Knoten_initialisieren(QString filename)
         connect(knoten, SIGNAL(signalLog(QString, QString)), this, SIGNAL(signalLog(QString, QString)));
         if (knoten->parseCSVline(lineStr))
         {
-            knoten->setLogger(mLogger);
+            if (mLogger != nullptr)
+                knoten->setLogger(mLogger);
             mKnotenliste.append(knoten);
         }
         else
             delete knoten;
     }
 
-    emit signalLog("Info", QString().sprintf("%i Knoten geladen", mKnotenliste.length()));
+    log("Info", QString().sprintf("%i Knoten geladen", mKnotenliste.length()));
 
     file.close();
 }
@@ -68,7 +82,7 @@ void Netzberechnung::Leitungen_initialisieren(QString filename)
     file.setFileName(filename);
     if (!file.open(QIODevice::ReadOnly))
     {
-        emit signalLog("Error", "Knoten_initialisieren: Kann Datei nicht öffnen");
+        log("Error", "Knoten_initialisieren: Kann Datei nicht öffnen");
         return;
     }
 
@@ -88,14 +102,15 @@ void Netzberechnung::Leitungen_initialisieren(QString filename)
         connect(leitung, SIGNAL(signalLog(QString, QString)), this, SIGNAL(signalLog(QString, QString)));
         if (leitung->parseCSVline(lineStr))
         {
-            leitung->setLogger(mLogger);
+            if (mLogger != nullptr)
+                leitung->setLogger(mLogger);
             mLeitungliste.append(leitung);
         }
         else
             delete leitung;
     }
 
-    emit signalLog("Info", QString().sprintf("%i Leitungen geladen", mLeitungliste.length()));
+    log("Info", QString().sprintf("%i Leitungen geladen", mLeitungliste.length()));
 
     file.close();
 }
@@ -108,7 +123,7 @@ void Netzberechnung::Kraftwerke_initialisieren(QString filename)
     file.setFileName(filename);
     if (!file.open(QIODevice::ReadOnly))
     {
-        emit signalLog("Error", "Knoten_initialisieren: Kann Datei nicht öffnen");
+        log("Error", "Knoten_initialisieren: Kann Datei nicht öffnen");
         return;
     }
 
@@ -127,19 +142,61 @@ void Netzberechnung::Kraftwerke_initialisieren(QString filename)
         connect(kraftwerk, SIGNAL(signalLog(QString, QString)), this, SIGNAL(signalLog(QString, QString)));
         if (kraftwerk->parseCSVline(lineStr))
         {
-            kraftwerk->setLogger(mLogger);
+            if (mLogger != nullptr)
+                kraftwerk->setLogger(mLogger);
             mKraftwerksliste.append(kraftwerk);
         }
         else
             delete kraftwerk;
     }
 
-    emit signalLog("Info", QString().sprintf("%i Kraftwerke geladen", mKraftwerksliste.length()));
+    log("Info", QString().sprintf("%i Kraftwerke geladen", mKraftwerksliste.length()));
 
     file.close();
 }
 
-void Netzberechnung::Lastgang_rechnen()
+void Netzberechnung::SetzeSpeicherkombination(QList<bool> kombinationsListe, double P_N, double CN, double cN, double BN, double bN)
+{
+    mKombinationsListe = kombinationsListe;
+    quint32 Knoten = 1;
+    quint32 Kraftwerksnummer = quint32(mKraftwerksliste.length());
+    foreach(bool speicherVorhanden, kombinationsListe)
+    {
+        if (speicherVorhanden)
+        {
+            Kraftwerk_Last_Speicher* speicher = new Kraftwerk_Last_Speicher(this);
+
+            Kraftwerksnummer++;
+
+            speicher->K = Knoten;
+            speicher->N = Kraftwerksnummer;
+            speicher->P_N = P_N;
+            speicher->x_Nmin = -1.0;
+            speicher->x_Nmax = 1.0;
+            speicher->x_N = 0.0;
+            speicher->R_N = Fremdregelung;
+            speicher->C_N = CN;
+            speicher->c_N = cN;
+            speicher->o_NP = false;
+
+            // Daten zusätzlich bei Speichern
+            speicher->B_N = BN;
+            speicher->b_N = bN;
+            speicher->n_N = 0.0;
+            speicher->o_NK = false;
+            speicher->o_NB = false;
+            //speicher->TQ =
+
+            connect(speicher, SIGNAL(signalLog(QString, QString)), this, SIGNAL(signalLog(QString, QString)));
+            if (mLogger != nullptr)
+                speicher->setLogger(mLogger);
+            mKraftwerksliste.append(speicher);
+        }
+        Knoten++;
+    }
+}
+
+double Netzberechnung::Lastgang_rechnen()
 {
     // To do: Später Inverse nur einmal zentral berechnen
     Netzmatrix_Leitungen_invers_berechnen();
@@ -148,8 +205,8 @@ void Netzberechnung::Lastgang_rechnen()
     Logfile_schreiben();
     if (Netz_anregeln() == false)
     {
-        emit signalLog("Error", "Netz in Grundkonfiguration nicht regelbar!");
-        return;
+        log("Error", "Netz in Grundkonfiguration nicht regelbar!");
+        return qQNaN();
     }
 
     update();   // Grafik plotten
@@ -175,27 +232,29 @@ void Netzberechnung::Lastgang_rechnen()
         QString restzeitstring = QString().sprintf("%i ms", int(restzeit));
         QString gesamtzeitstring = QString().sprintf("%i ms", int(gesamtzeit));
 
-        emit signalLog("Time", QString().sprintf("Berechne Schritt %i von %i. Laufzeit: %s Restzeit: %s Gesamtzeit: %s",
+        log("Time", QString().sprintf("Berechne Schritt %i von %i. Laufzeit: %s Restzeit: %s Gesamtzeit: %s",
                                                  t, zeitschlitze, laufzeitstring.toUtf8().data(),
                                                  restzeitstring.toUtf8().data(),
                                                  gesamtzeitstring.toUtf8().data()));
 
         QDateTime d = QDateTime::fromString("2019-07-04T00:50:00+02:00", Qt::ISODate);
         QDateTime simulatedTime = d.addSecs(t*15*60);
-        emit signalLog("Time", QString().sprintf("Aktuelle unixtime: %i", int(simulatedTime.toSecsSinceEpoch())));
+        log("Time", QString().sprintf("Aktuelle unixtime: %i", int(simulatedTime.toSecsSinceEpoch())));
 
         Zeit_setzen(simulatedTime);
 
         if (!Netz_anregeln())
         {
-            emit signalLog("Error", "Netz im laufenden Betrieb nicht regelbar!");
-            break;
+            log("Error", "Netz im laufenden Betrieb nicht regelbar!");
+            return qInf();
         }
         Tageskosten += Netzkosten_berechnen();
 
         update();   // Grafik plotten
         Logfile_schreiben();
     }
+
+    return Tageskosten;
 }
 
 void Netzberechnung::Netzmatrix_Leitungen_invers_berechnen()
@@ -232,7 +291,7 @@ void Netzberechnung::Netzmatrix_Leitungen_invers_berechnen()
         }
     }
 
-//    emit signalLog("Netzmatrix_Leitungen", Netzmatrix_Leitungen.toString());
+//    log("Netzmatrix_Leitungen", Netzmatrix_Leitungen.toString());
 
 //    Matrix vec(3,3);
 
@@ -247,7 +306,7 @@ void Netzberechnung::Netzmatrix_Leitungen_invers_berechnen()
 //    vec.fill(2, 2, 9.0);
 
 //    Matrix tmp = vec.invert();
-//    emit signalLog("tmp", tmp.toString());
+//    log("tmp", tmp.toString());
 
     mNetzmatrix_Leitungen_invers = Netzmatrix_Leitungen.invert();
 }
@@ -275,8 +334,8 @@ void Netzberechnung::Leitungsfluss_berechnen()
         Leistungsvektor.fill(int(kt->K -2), 0, P_Summe);// Ersten Knoten ignorieren, ist Referenzpunkt
     }
 
-//    emit signalLog("Leistungsvektor", Leistungsvektor.toString());
-//    emit signalLog("mNetzmatrix_Leitungen_invers", mNetzmatrix_Leitungen_invers.toString());
+//    log("Leistungsvektor", Leistungsvektor.toString());
+//    log("mNetzmatrix_Leitungen_invers", mNetzmatrix_Leitungen_invers.toString());
 
     // Potentialvektor erstellen:
     // Potentialvektor = linsolve(Netzmatrix_Leitungen,Leistungsvektor);
@@ -288,7 +347,7 @@ void Netzberechnung::Leitungsfluss_berechnen()
         Potentialvektor.fill(i, 0, Potentialvektor_reduced.at(i-1, 0));
     }
 
-//    emit signalLog("Potentialvektor", Potentialvektor.toString());
+//    log("Potentialvektor", Potentialvektor.toString());
 
     // Lastfluss auf Leitungen berechnen:
     foreach (Leitung* lt, mLeitungliste)
@@ -301,7 +360,7 @@ void Netzberechnung::Leitungsfluss_berechnen()
         double Potentialdifferenz = Startpotential - Endpotential;
         double p = Potentialdifferenz / R;
         lt->Aktuelle_Leistung_setzen_in_kW(p);
-        //emit signalLog("Logfile", QString().sprintf("Leistung ueber Leitung %i:  %8.0lf kW\n", lt->L, p));
+        //log("Logfile", QString().sprintf("Leistung ueber Leitung %i:  %8.0lf kW\n", lt->L, p));
     }
 }
 
@@ -329,7 +388,7 @@ bool Netzberechnung::Netzunterdeckung_regeln()
 
     if (Sum_Reserve_KW < 1.0)
     {
-        emit signalLog("Error", "Keine Regelreserve mehr vorhanden!");
+        log("Error", "Keine Regelreserve mehr vorhanden!");
         return false;
     }
 
@@ -385,7 +444,7 @@ bool Netzberechnung::Netz_anregeln()
 
         if (!Netzunterdeckung_regeln())
         {
-            emit signalLog("Error", "Unterdeckungsausgleich vor Regelung nicht moeglich!");
+            log("Error", "Unterdeckungsausgleich vor Regelung nicht moeglich!");
             return false;
         }
 
@@ -430,7 +489,7 @@ bool Netzberechnung::Netz_anregeln()
         // 5. Netzunterdeckung nach Lastausgleich wieder auf 0 bringen
         if (!Netzunterdeckung_regeln())
         {
-            emit signalLog("Error", "Unterdeckungsausgleich nach Regelung nicht moeglich!");
+            log("Error", "Unterdeckungsausgleich nach Regelung nicht moeglich!");
             return false;
         }
 
@@ -520,7 +579,7 @@ void Netzberechnung::Logfile_schreiben()
     text += QString().sprintf("\n");
     text += QString().sprintf("\n");
 
-    emit signalLog("Logfile", text);
+    log("Logfile", text);
 }
 
 void Netzberechnung::Zeit_setzen(QDateTime time)
@@ -843,6 +902,17 @@ QList<Kraftwerk_Last_Speicher *> Netzberechnung::sucheKraftwerkeAnKnoten(quint32
     return list;
 }
 
+void Netzberechnung::update()
+{
+    //graphic deactivated due to parallel computing
+    //paintNetz(this);
+}
+
+int Netzberechnung::height()
+{
+    return 800; // Height of graphic
+}
+
 Knoten *Netzberechnung::sucheKnotenIndex(quint32 knotenNr)
 {
     foreach(Knoten* knoten, mKnotenliste)
@@ -876,37 +946,37 @@ Kraftwerk_Last_Speicher *Netzberechnung::sucheKraftwerkIndex(quint32 KraftwerkNr
     return nullptr;
 }
 
-void Netzberechnung::mouseMoveEvent(QMouseEvent *event)
-{
-    Q_UNUSED(event)
-}
+//void Netzberechnung::mouseMoveEvent(QMouseEvent *event)
+//{
+//    Q_UNUSED(event)
+//}
 
-void Netzberechnung::mousePressEvent(QMouseEvent *event)
-{
-    Q_UNUSED(event)
-}
+//void Netzberechnung::mousePressEvent(QMouseEvent *event)
+//{
+//    Q_UNUSED(event)
+//}
 
-void Netzberechnung::mouseReleaseEvent(QMouseEvent *event)
-{
-    Q_UNUSED(event)
-}
+//void Netzberechnung::mouseReleaseEvent(QMouseEvent *event)
+//{
+//    Q_UNUSED(event)
+//}
 
-void Netzberechnung::wheelEvent(QWheelEvent *event)
-{
-    Q_UNUSED(event)
-}
+//void Netzberechnung::wheelEvent(QWheelEvent *event)
+//{
+//    Q_UNUSED(event)
+//}
 
-void Netzberechnung::keyPressEvent(QKeyEvent *event)
-{
-    Q_UNUSED(event)
-}
+//void Netzberechnung::keyPressEvent(QKeyEvent *event)
+//{
+//    Q_UNUSED(event)
+//}
 
-void Netzberechnung::paintEvent(QPaintEvent *event)
-{
-    paintNetz(this);
+//void Netzberechnung::paintEvent(QPaintEvent *event)
+//{
+//    paintNetz(this);
 
-    event->accept();
-}
+//    event->accept();
+//}
 
 void Netzberechnung::paintNetz(QPaintDevice *paintDevice)
 {
@@ -1155,4 +1225,19 @@ void Netzberechnung::paintKnoten(QPainter *painter, Knoten *knoten)
     QString text;
     text.sprintf("K%i", knoten->K);
     painter->drawText(point + QPointF(10.0, 0.0), text);
+}
+
+void Netzberechnung::log(QString category, QString text)
+{
+    return; // Temporarily disable all log output to get maximum performance
+    if (category == "Logfile")
+        return;
+    emit signalLog(category, text);
+}
+
+void Netzberechnung::run()
+{
+    double Tageskosten;
+    Tageskosten = Lastgang_rechnen();
+    emit signalResult(mKombinationsListe, Tageskosten);
 }
