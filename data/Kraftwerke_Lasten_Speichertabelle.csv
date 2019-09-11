@@ -1,16 +1,4 @@
-﻿Number N;"Netzverknüpf-
-ungspunkt K";"Nennleistung 
-PN [kW]";xNmin;xNmax;Stellgröße xN;"Regelart RN -> R aus 
-{Festleistung=1, Fremd=2, 
-Klima=3, Selbst=4}";"Fixkosten 
-CN [€/Jahr]";"variable Kosten 
-cN [€/kWh]";"Erlaubnis Vorgabe 
-Nennleistung oNP";"Bunkergröße 
-BN [kWh]";"Bunkerfüllstand 
-bN";"Nachfüllrate 
-nN in %";"Erlaubnis Vorgabe 
-Knoten oNK";"Erlaube Vorgabe 
-Bunkergröße oNB";Trendquelle
+Number N;"Netzverknüpfungspunkt K";"Nennleistung PN [kW]";xNmin;xNmax;Stellgröße xN;"Regelart RN -> R aus {Festleistung=1, Fremd=2, Klima=3, Selbst=4}";"Fixkosten CN [€/Jahr]";"variable Kosten cN [€/kWh]";"Erlaubnis Vorgabe Nennleistung oNP";"Bunkergröße   BN [kWh]";"Bunkerfüllstand bN";"Nachfüllrate nN in %";"Erlaubnis Vorgabe Knoten oNK";"Erlaube Vorgabe Bunkergröße oNB";Trendquelle
 1;1;900000;0,7;1;0,8;1;100000000;0,01;1;0;0;0;0;0;
 2;2;1400000;0;1;1;2;25000000;0,13;1;0;0;0;0;0;
 3;5;1600000;0;1;0,65;2;50000000;0,05;1;0;0;0;0;0;
