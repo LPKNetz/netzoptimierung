@@ -9,7 +9,7 @@ Nennleistung oNP";"Bunkergröße
 BN [kWh]";"Bunkerfüllstand 
 bN";"Nachfüllrate 
 nN in %";"Erlaubnis Vorgabe 
-Knoten oMK";"Erlaube Vorgabe 
+Knoten oNK";"Erlaube Vorgabe 
 Bunkergröße oNB";Trendquelle
 1;1;900000;0,7;1;0,8;1;100000000;0,01;1;0;0;0;0;0;
 2;2;1400000;0;1;1;2;25000000;0,13;1;0;0;0;0;0;
@@ -19,7 +19,5 @@ Bunkergröße oNB";Trendquelle
 6;3;100000;0;1;0,62;3;5000000;0;0;0;0;0;0;0;weather/wind/Muenchen_Juli_2019.json
 7;7;500000;0;1;0;3;25000000;0;0;0;0;0;0;0;weather/wind/Goteborg_Juli_2019.json
 8;7;100000;-1;0;-1;1;0;0;0;0;0;0;0;0;
-9;1;500000;-1;0;-1;4;0;0;0;0;0;0;0;0;load/city/Tageslast_Fraunhofer_2050_sommer.csv
-10;6;500000;-1;0;-1;4;0;0;0;0;0;0;0;0;load/city/Tageslast_Fraunhofer_2050_sommer.csv
-11;3;50000;-1;1;0;2;1250000;0,117924528;1;53000;1;0;0;0;
-12;4;22000;-1;1;-1;2;850000;0,110677083;1;38400;0,5;0;0;0;
+9;1;321689;-1;0;-1;4;0;0;0;0;0;0;0;0;load/city/Tageslast_Fraunhofer_2050_sommer.xlsx
+10;6;500000;-1;0;-1;4;0;0;0;0;0;0;0;0;load/city/Tageslast_Fraunhofer_2050_sommer.xlsx
