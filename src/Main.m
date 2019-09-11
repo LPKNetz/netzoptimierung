@@ -41,12 +41,16 @@ global Anzahl_overflow
 global Leistung_total_overflow
 %% Programm
 Netzmatrix_Leitungen_invers_berechnen();
-Lastgang_rechnen();
-Anzahl_Leitungen = Anzahl_overflow
-Leistung_total_overflow 
-PoPL_ratio = Leistung_total_overflow / Netzeinspeiseleistung_aktuell() %
-PoPL_ratio_3 = Leistung_total_overflow / (Netzeinspeiseleistung_aktuell() - Netzausspeiseleistung_aktuell()) %
 
+% Folgendes aktivieren um NUR 1 Tag zu rechnen:
+
+ Lastgang_rechnen();
+ Anzahl_Leitungen = Anzahl_overflow
+ Leistung_total_overflow 
+ PoPL_ratio = Leistung_total_overflow / Netzeinspeiseleistung_aktuell() %
+ PoPL_ratio_3 = Leistung_total_overflow / (Netzeinspeiseleistung_aktuell() - Netzausspeiseleistung_aktuell()) %
+
+%bei tic einen STOPP-Point machen
 %% Optimierer
 
 %INPUT:
@@ -303,12 +307,12 @@ function Lastgang_rechnen()
         end
         
         Tageskosten = Tageskosten + Netzkosten_berechnen();
-        
+        Schrittkosten = Netzkosten_berechnen()
         
         Grafik_plotten();
         Logfile_schreiben();
-        clc;
-
+        %clc;
+        Tageskosten;
         
         for f=1:u  % Konstruktion von maxpowerflow 
             Leitung=Leitungsliste(1,f);
@@ -828,16 +832,26 @@ function result = Netz_anregeln() %% 7. Netz anregeln:
 
         %2. Umgebungswerte und Gradient bilden:
         [~,m]=size(Kraftwerksliste);
+        reset_xN = zeros(m,1);
         for i=1:m
             Kraftwerk = Kraftwerksliste(1,i);
-            x0 = Kraftwerk.x_N;  %x0 - Start-stellwert 
-            Kraftwerk.x_N = Kraftwerk.x_N + c; %auf x0 - Vektor die finite Differenz c aufaddieren 
+            % FEHLER : x0 = Kraftwerk.x_N;  %x0 - Start-stellwert
+            for z=1:m
+                Kraftwerk = Kraftwerksliste(1,z);
+                rest_xN(z,1) = Kraftwerk.x_N;
+            end
+            Kraftwerk.x_N = Kraftwerk.x_N + c; %auf x0 - Vektor die finite Differenz c aufaddieren
             Netzunterdeckung_regeln();
             sum0 = Leitungslastquadratsumme_berechnen(); %Funktion quadriert jede einzelne Leitungslast (die initialen) und summiert alle
             Leitungsfluss_berechnen(); %berechnet aktuellen Lastfluss durch Leitungen
             sum1 = Leitungslastquadratsumme_berechnen(); %quadriert die neu berechneten Leitungslasten und summiert alle
-            Kraftwerk.x_N = x0; %setzt x_N auf die ursprünglichen Werte (=Start-stellwert) zurück
-            Netzunterdeckung_regeln();
+            % FEHLER : Kraftwerk.x_N = x0; %setzt x_N auf die ursprünglichen Werte (=Start-stellwert) zurück
+            % FEHLER : Netzunterdeckung_regeln();
+            for z=1:m
+                Kraftwerk = Kraftwerksliste(1,z);
+                Kraftwerk.x_N = rest_xN(z,1);
+            end
+            
             Gradient(i,1)= (sum1-sum0)/c ; % Differenz aus Fehlerquadratsumme vor und nach der Leistungsflussberechnung durch die finite Differenz
         end
         %Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
