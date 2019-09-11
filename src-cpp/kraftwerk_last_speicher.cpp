@@ -24,6 +24,7 @@ Kraftwerk_Last_Speicher::Kraftwerk_Last_Speicher(QObject *parent,
     this->x_Nmin = xNmin;
     this->x_Nmax = xNmax;
     this->x_N = xN;
+    this->x_N_store = 0.0;
     this->R_N = RN;
     this->C_N = CN;
     this->c_N = cN;
@@ -277,6 +278,16 @@ qreal Kraftwerk_Last_Speicher::VerfuegbareLeistungLieferung_kW()
 qreal Kraftwerk_Last_Speicher::VerfuegbareStellgroesseLieferung()
 {
     return (this->VerfuegbareLeistungLieferung_kW() / this->P_N);
+}
+
+void Kraftwerk_Last_Speicher::SollwertSpeichern()
+{
+    this->x_N_store = this->x_N;
+}
+
+void Kraftwerk_Last_Speicher::SollwertWiederherstellen()
+{
+    this->x_N = this->x_N_store;
 }
 
 void Kraftwerk_Last_Speicher::Speicher_rechnen()

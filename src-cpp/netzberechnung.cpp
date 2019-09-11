@@ -248,7 +248,9 @@ double Netzberechnung::Lastgang_rechnen()
             log("Error", "Netz im laufenden Betrieb nicht regelbar!");
             return qInf();
         }
-        Tageskosten += Netzkosten_berechnen();
+        double cost = Netzkosten_berechnen();
+        Tageskosten += cost;
+        printf("%20.18e\n", cost);
 
         update();   // Grafik plotten
         Logfile_schreiben();
@@ -457,14 +459,24 @@ bool Netzberechnung::Netz_anregeln()
         Matrix Gradient(mKraftwerksliste.length(), 1);
         foreach (Kraftwerk_Last_Speicher* kw, mKraftwerksliste)
         {
-            double x0 = kw->x_N;    // x0 - Start-stellwert
+            // Für alle Kraftwerke den Zustand festhalten
+            foreach(Kraftwerk_Last_Speicher* k, mKraftwerksliste)
+            {
+                k->SollwertSpeichern();
+            }
+
             kw->x_N += c;           // auf x0 die finite Differenz c aufaddieren
             Netzunterdeckung_regeln();
             double sum0 = Leitungslastquadratsumme_berechnen(); // Funktion quadriert jede einzelne Leitungslast (die initialen) und summiert alle
             Leitungsfluss_berechnen();  // berechnet aktuellen Lastfluss durch Leitungen
             double sum1 = Leitungslastquadratsumme_berechnen(); // quadriert die neu berechneten Leitungslasten und summiert alle
-            kw->x_N = x0;           // setzt x_N auf die ursprünglichen Werte (=Start-stellwert) zurück
-            Netzunterdeckung_regeln();
+
+            // Für alle Krftwerke den Urzustand wieder herstellen
+            foreach(Kraftwerk_Last_Speicher* k, mKraftwerksliste)
+            {
+                k->SollwertWiederherstellen();
+            }
+
             Gradient.fill(int(kw->N - 1), 0, ((sum1 - sum0)/c));     // Differenz aus Fehlerquadratsumme vor und nach der Leistungsflussberechnung durch die finite Differenz
         }
         // Leitungsfluss_berechnen(); %abschließend wieder aktuellen Lastfluss nach Veränderung der x_N berechnen
