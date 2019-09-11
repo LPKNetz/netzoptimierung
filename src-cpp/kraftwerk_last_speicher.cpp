@@ -14,7 +14,7 @@ Kraftwerk_Last_Speicher::Kraftwerk_Last_Speicher(QObject *parent,
                                                  qreal BN,
                                                  qreal bN,
                                                  qreal nN,
-                                                 bool oMK,
+                                                 bool oNK,
                                                  bool oNB,
                                                  QString tq) : QObject(parent)
 {
@@ -33,7 +33,7 @@ Kraftwerk_Last_Speicher::Kraftwerk_Last_Speicher(QObject *parent,
     this->B_N = BN;
     this->b_N = bN;
     this->n_N = nN;
-    this->o_MK = oMK;
+    this->o_NK = oNK;
     this->o_NB = oNB;
     this->TQ = tq;
     this->trend = new Trend(this);
@@ -79,7 +79,7 @@ bool Kraftwerk_Last_Speicher::parseCSVline(QString line)
     this->B_N = fields.at(10).toDouble();
     this->b_N = fields.at(11).toDouble();
     this->n_N = fields.at(12).toDouble();
-    this->o_MK = bool(fields.at(13).toInt());
+    this->o_NK = bool(fields.at(13).toInt());
     this->o_NB = bool(fields.at(14).toInt());
     this->TQ = fields.at(15);
     if (!this->TQ.isEmpty())

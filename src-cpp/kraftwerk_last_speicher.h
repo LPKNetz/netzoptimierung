@@ -31,7 +31,7 @@ public:
                                      qreal BN = 0.0,
                                      qreal bN = 0.0,
                                      qreal nN = 0.0,
-                                     bool oMK = false,
+                                     bool oNK = false,
                                      bool oNB = false,
                                      QString tq = QString());
 
@@ -50,7 +50,7 @@ public:
     qreal B_N;              // Bunkergröße
     qreal b_N;              // Bunkerfüllstand
     qreal n_N;              // Nachfüllrate
-    bool o_MK;              // Erlaube Vorgabe Netzverknüpfungspunkt
+    bool o_NK;              // Erlaube Vorgabe Netzverknüpfungspunkt
     bool o_NB;              // Erlaube Vorgabe Bunkergröße
     QString TQ;             // Pfad Trendquelle
     Trend *trend;           // Trenddaten

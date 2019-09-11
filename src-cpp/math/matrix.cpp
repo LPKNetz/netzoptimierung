@@ -39,7 +39,7 @@ Matrix::Matrix(const Matrix &src)
 Matrix::~Matrix()
 {
     //printf("Matrix destructor\n");
-    //delete[] A;
+    delete[] A;
 }
 
 double Matrix::at(int n, int m)

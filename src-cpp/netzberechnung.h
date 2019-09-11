@@ -1,7 +1,7 @@
 #ifndef NETZBERECHNUNG_H
 #define NETZBERECHNUNG_H
 
-#include <QWidget>
+#include <QThread>
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QKeyEvent>
@@ -16,11 +16,12 @@
 #include "logger.h"
 #include "math/matrix.h"
 
-class Netzberechnung : public QWidget
+class Netzberechnung : public QThread
 {
     Q_OBJECT
 public:
-    explicit Netzberechnung(QWidget *parent = nullptr);
+    explicit Netzberechnung(QObject *parent = nullptr);
+    ~Netzberechnung();
 
     QList<Kraftwerk_Last_Speicher*> mKraftwerksliste;
     QList<Leitung*> mLeitungliste;
@@ -35,7 +36,9 @@ public:
     void Leitungen_initialisieren(QString filename);
     void Kraftwerke_initialisieren(QString filename);
 
-    void Lastgang_rechnen();
+    void SetzeSpeicherkombination(QList<bool> kombinationsListe, double P_N, double CN, double cN, double BN, double bN);
+
+    double Lastgang_rechnen();
     void Netzmatrix_Leitungen_invers_berechnen();
     void Leitungsfluss_berechnen();
     bool Netzunterdeckung_regeln();
@@ -77,24 +80,32 @@ public:
     QList<Kraftwerk_Last_Speicher*> sucheKraftwerkeAnKnoten(quint32 KnotenNr);
 
 protected:
-    void mouseMoveEvent(QMouseEvent *event);
-    void mousePressEvent(QMouseEvent *event);
-    void mouseReleaseEvent(QMouseEvent *event);
-    void wheelEvent(QWheelEvent* event);
-    void keyPressEvent(QKeyEvent *event);
-    void paintEvent(QPaintEvent *event);
+//    void mouseMoveEvent(QMouseEvent *event);
+//    void mousePressEvent(QMouseEvent *event);
+//    void mouseReleaseEvent(QMouseEvent *event);
+//    void wheelEvent(QWheelEvent* event);
+//    void keyPressEvent(QKeyEvent *event);
+//    void paintEvent(QPaintEvent *event);
 
 private:
     Logger *mLogger;
+    QList<bool> mKombinationsListe;
 
+    void update();
+    int height();
     void paintNetz(QPaintDevice *paintDevice);
     void paintKraftwerk(QPainter *painter, Kraftwerk_Last_Speicher *kraftwerk);
     void paintLeitung(QPainter *painter, Leitung *leitung);
     void paintKnoten(QPainter *painter, Knoten *knoten);
+    void log(QString category, QString text);
+
+    // Multithreading
+    void run();
 
 
 signals:
     void signalLog(QString category, QString text);
+    void signalResult(QList<bool> kombinationsListe, double Tageskosten);
 
 public slots:
 };
