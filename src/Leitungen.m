@@ -59,7 +59,11 @@ classdef Leitungen < handle
             result = obj.delta_t_alt * (obj.C_L/(8760*3600));  % liefert ?/Zeitschlitz
         end
         function result = VariableKosten(obj)
+            if obj.gestoert() == false
             result = obj.delta_t_alt * abs(obj.Leistung_aktuell()) * obj.c_L/3600; % liefert ?/Zeitschlitz
+            else
+                result = inf;  
+            end
         end    
         function result = Leistung_aktuell(obj)
             result = obj.p_L * obj.P_L;
