@@ -250,7 +250,6 @@ double Netzberechnung::Lastgang_rechnen()
         }
         double cost = Netzkosten_berechnen();
         Tageskosten += cost;
-        printf("%20.18e\n", cost);
 
         update();   // Grafik plotten
         Logfile_schreiben();
@@ -882,7 +881,8 @@ double Netzberechnung::Leitungslastquadratsumme_berechnen()
 
     foreach(Leitung* lt, mLeitungliste)
     {
-        sum += qPow(lt->p_L, 2.0);
+        double p = lt->p_L;
+        sum += qPow(p, 6.0);
     }
 
     return sum;

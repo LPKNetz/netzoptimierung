@@ -90,7 +90,7 @@ void MainWindow::slot_finished()
     Netzberechnung* nb = new Netzberechnung(this);
 //        nb->setLogger(&mLogger);
     nb->Netz_initialisieren();
-    nb->SetzeSpeicherkombination(threadfahrplan.takeFirst(), 50000.0, 1250000.0, 0.11792, 53000.0, 0.5);
+    nb->SetzeSpeicherkombination(threadfahrplan.takeFirst(), 50000.0, 1250000.0, 0.11792, 48.0 * 50000.0, 0.5);
     connect(nb, SIGNAL(signalResult(QList<bool>, double)), this, SLOT(slotResult(QList<bool>, double)));
     connect(nb, SIGNAL(finished()), this, SLOT(slot_finished()));
     connect(nb, SIGNAL(finished()), nb, SLOT(quit()));
