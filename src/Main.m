@@ -1367,7 +1367,7 @@ function result = Leitungslastquadratsumme_berechnen() %sum_p_L berechnen (= Sum
     sum=0;
     for i=1:l 
         Leitung=Leitungsliste(1,i);
-        sum=sum+(Leitung.p_L^2); 
+        sum=sum+(Leitung.p_L^6); 
         clear Leitung
     end
     result = sum;
