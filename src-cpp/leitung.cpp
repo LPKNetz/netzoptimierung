@@ -60,6 +60,16 @@ bool Leitung::parseCSVline(QString line)
     return true;
 }
 
+QString Leitung::print()
+{
+    QString text;
+
+    text += QString().sprintf("Leitung L=%i K_L1=%i K_L2=%i P_L=%.3lf p_L=%.3lf R_L=%.3lf C_L=%.3lf c_L=%.3lf o_KL=%i o_PL=%i",
+                              L, K_L1, K_L2, P_L, p_L, R_L, C_L, c_L, o_KL, o_PL);
+
+    return text;
+}
+
 qreal Leitung::Transportleistung()
 {
     return (this->p_L * this->P_L);

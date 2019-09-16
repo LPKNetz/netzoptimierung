@@ -62,6 +62,7 @@ public:
 
     void setLogger(Logger* logger);
     bool parseCSVline(QString line);
+    QString print();
 
     void Zeit_setzen(QDateTime time);
     qreal Fixkosten();

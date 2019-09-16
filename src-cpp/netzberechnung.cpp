@@ -269,7 +269,7 @@ void Netzberechnung::Netzmatrix_Leitungen_invers_berechnen()
     {
         for (int j=2; j <= k; j++)// Ignoriere Knoten 0, ist Referenzpunkt
         {
-            if (i == j)
+            if (i == j) // Hauptdiagonale
             {
                 G_Summe = 0.0;
                 foreach (Leitung* lt, mLeitungliste) {
@@ -279,7 +279,7 @@ void Netzberechnung::Netzmatrix_Leitungen_invers_berechnen()
                 }
                 Netzmatrix_Leitungen.fill(i-2, j-2, G_Summe);// Ignoriere Knoten 0, ist Referenzpunkt
             }
-            else
+            else    // Nicht Hauptdiagonale
             {
                 G_Summe = 0.0;
                 foreach (Leitung* lt, mLeitungliste) {
@@ -294,23 +294,8 @@ void Netzberechnung::Netzmatrix_Leitungen_invers_berechnen()
     }
 
 //    log("Netzmatrix_Leitungen", Netzmatrix_Leitungen.toString());
-
-//    Matrix vec(3,3);
-
-//    vec.fill(0, 0, 3.0);
-//    vec.fill(0, 1, -2.0);
-//    vec.fill(0, 2, 0.0);
-//    vec.fill(1, 0, -2.0);
-//    vec.fill(1, 1, 9.0);
-//    vec.fill(1, 2, -4.0);
-//    vec.fill(2, 0, 0.0);
-//    vec.fill(2, 1, -4.0);
-//    vec.fill(2, 2, 9.0);
-
-//    Matrix tmp = vec.invert();
-//    log("tmp", tmp.toString());
-
     mNetzmatrix_Leitungen_invers = Netzmatrix_Leitungen.invert();
+//    log("Netzmatrix_Leitungen_invers", mNetzmatrix_Leitungen_invers.toString());
 }
 
 void Netzberechnung::Leitungsfluss_berechnen()
@@ -349,6 +334,7 @@ void Netzberechnung::Leitungsfluss_berechnen()
         Potentialvektor.fill(i, 0, Potentialvektor_reduced.at(i-1, 0));
     }
 
+//    log("Potentialvektor_reduced", Potentialvektor_reduced.toString());
 //    log("Potentialvektor", Potentialvektor.toString());
 
     // Lastfluss auf Leitungen berechnen:
@@ -371,7 +357,7 @@ bool Netzberechnung::Netzunterdeckung_regeln()
     double NU = Netzunterdeckung_aktuell();
     double Sum_Reserve_KW = 0.0;
 
-    if (NU >= 1.0)  // Kraftwerksverbund muss aufgeregelt werden, wenn die NU größer 0 ist (=Mangel)
+    if (NU >= 0.0)  // Kraftwerksverbund muss aufgeregelt werden, wenn die NU größer 0 ist (=Mangel)
     {
         foreach (Kraftwerk_Last_Speicher* kw, mKraftwerksliste)
         {
@@ -427,10 +413,11 @@ bool Netzberechnung::Netz_anregeln()
     // 1. GROSSER TEIL: STELLWERTE UM DELTA VERÄNDERN
 
     // Einstellungen:
-    double a_k = 0.00001;      // Definieren der Schrittweite
-    double c = 0.0000001;      // Definieren der Finiten Differenz für die Gradientbildung
+//    double a_k = 0.00001;      // Definieren der Schrittweite
+    double a_k = 0.01;      // Definieren der Schrittweite
+    double c = 0.001;      // Definieren der Finiten Differenz für die Gradientbildung
 
-    for (int loop=1; loop <= 20; loop++)
+    for (int loop=1; loop <= 50; loop++)
     {
         // 1. pL0 - Start-vektor aus allen pLs der Leitungen machen:
 

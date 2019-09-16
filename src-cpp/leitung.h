@@ -39,6 +39,7 @@ public:
 
     void setLogger(Logger* logger);
     bool parseCSVline(QString line);
+    QString print();
 
     qreal Transportleistung();
     qreal Leitungswiderstand();
