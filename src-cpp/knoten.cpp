@@ -43,6 +43,16 @@ bool Knoten::parseCSVline(QString line)
     return true;
 }
 
+QString Knoten::print()
+{
+    QString text;
+
+    text += QString().sprintf("Knoten K=%i Long_K=%.3lf Lat_K=%.3lf P_K=%.0lf C_K=%.3lf o_PK=%i",
+                              K, Long_K, Lat_K, P_K, C_K, o_PK);
+
+    return text;
+}
+
 void Knoten::Zeit_setzen(QDateTime time)
 {
     if (t_alt.isNull())

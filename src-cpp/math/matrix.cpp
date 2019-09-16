@@ -32,6 +32,7 @@ Matrix::Matrix(const Matrix &src)
         for (int n=0; n<src.m_n; n++)
         {
             A[index(n, m)] = src.A[index(n, m)];
+            //this->fill(n, m, src.A[index(n, m)]);
         }
     }
 }
@@ -123,6 +124,27 @@ Matrix Matrix::operator*(Matrix rhs)
     }
 
     return M;
+}
+
+Matrix Matrix::operator=(const Matrix &rhs)
+{
+    if ((this->m_m != rhs.m_m) || (this->m_n != rhs.m_n))
+    {
+        delete[] A;
+        this->m_m = rhs.m_m;
+        this->m_n = rhs.m_n;
+        A = new double[rhs.m_n * rhs.m_m]();
+    }
+
+    for (int m=0; m<rhs.m_m; m++)
+    {
+        for (int n=0; n<rhs.m_n; n++)
+        {
+            A[index(n, m)] = rhs.A[index(n, m)];
+        }
+    }
+
+    return *this;
 }
 
 Matrix Matrix::invert()

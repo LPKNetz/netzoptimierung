@@ -8,7 +8,7 @@ class Matrix
 public:
     Matrix();
     Matrix(int n, int m);
-    Matrix(const Matrix& src);
+    Matrix(const Matrix &src);
     ~Matrix();
 
     double at(int n, int m);
@@ -17,6 +17,7 @@ public:
     Matrix operator+(const Matrix& rhs);
     Matrix operator-(const Matrix& rhs);
     Matrix operator*(Matrix rhs);
+    Matrix operator=(const Matrix& rhs);
 
     Matrix invert();
 

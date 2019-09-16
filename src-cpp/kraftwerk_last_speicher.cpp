@@ -24,6 +24,7 @@ Kraftwerk_Last_Speicher::Kraftwerk_Last_Speicher(QObject *parent,
     this->x_Nmin = xNmin;
     this->x_Nmax = xNmax;
     this->x_N = xN;
+    this->x_N_store = 0.0;
     this->R_N = RN;
     this->C_N = CN;
     this->c_N = cN;
@@ -86,6 +87,16 @@ bool Kraftwerk_Last_Speicher::parseCSVline(QString line)
         this->trend->TrendLaden("../data/" + this->TQ);
 
     return true;
+}
+
+QString Kraftwerk_Last_Speicher::print()
+{
+    QString text;
+
+    text += QString().sprintf("Kraftwerk N=%i K=%i P_N=%.0lf x_Nmin=%.3lf x_Nmax=%.3lf x_N=%.3lf R_N=%i C_N=%.3lf c_N=%.3lf o_NP=%i B_N=%.0lf b_N=%.3lf n_N=%.3lf o_NK=%i o_NB=%i TQ=%s",
+                              N, K, P_N, x_Nmin, x_Nmax, x_N, R_N, C_N, c_N, o_NP, B_N, b_N, n_N, o_NK, o_NB, TQ.toUtf8().data());
+
+    return text;
 }
 
 void Kraftwerk_Last_Speicher::Zeit_setzen(QDateTime time)
@@ -217,7 +228,7 @@ bool Kraftwerk_Last_Speicher::gestoert()
 
 bool Kraftwerk_Last_Speicher::istSpeicher()
 {
-    if ((this->x_Nmin < 0.001) && (this->B_N > 0.001))
+    if ((this->x_Nmin < -0.001) && (this->B_N > 0.001))
         return true;
     else
         return false;
@@ -277,6 +288,16 @@ qreal Kraftwerk_Last_Speicher::VerfuegbareLeistungLieferung_kW()
 qreal Kraftwerk_Last_Speicher::VerfuegbareStellgroesseLieferung()
 {
     return (this->VerfuegbareLeistungLieferung_kW() / this->P_N);
+}
+
+void Kraftwerk_Last_Speicher::SollwertSpeichern()
+{
+    this->x_N_store = this->x_N;
+}
+
+void Kraftwerk_Last_Speicher::SollwertWiederherstellen()
+{
+    this->x_N = this->x_N_store;
 }
 
 void Kraftwerk_Last_Speicher::Speicher_rechnen()

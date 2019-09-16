@@ -41,6 +41,7 @@ public:
     qreal x_Nmin;           // Minimale Stellgröße
     qreal x_Nmax;           // Maximale Stellgröße
     qreal x_N;              // Aktuelle Stellgröße
+    qreal x_N_store;        // Speicherwert der Stellgröße
     Regelart R_N;           // Regelart der Anlage
     qreal C_N;              // Fixkosten
     qreal c_N;              // Variabel Kosten
@@ -61,6 +62,7 @@ public:
 
     void setLogger(Logger* logger);
     bool parseCSVline(QString line);
+    QString print();
 
     void Zeit_setzen(QDateTime time);
     qreal Fixkosten();
@@ -82,6 +84,8 @@ public:
     qreal VerfuegbareStellgroesseBezug();
     qreal VerfuegbareLeistungLieferung_kW();
     qreal VerfuegbareStellgroesseLieferung();
+    void SollwertSpeichern();
+    void SollwertWiederherstellen();
 
 private:
     void Speicher_rechnen();
