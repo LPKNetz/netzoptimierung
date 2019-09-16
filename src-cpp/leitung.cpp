@@ -114,7 +114,10 @@ qreal Leitung::Fixkosten()
 
 qreal Leitung::Variablekosten()
 {
-    return (qAbs(this->Leistung_aktuell()) * this->c_L / 3600.0 * this->delta_t_alt);
+    if (!gestoert())
+        return (qAbs(this->Leistung_aktuell()) * this->c_L / 3600.0 * this->delta_t_alt);
+    else
+        return qInf();
 }
 
 qreal Leitung::Leistung_aktuell()

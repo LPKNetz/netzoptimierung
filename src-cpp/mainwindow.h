@@ -30,6 +30,7 @@ private:
     Ui::MainWindow *ui;
     Netzberechnung *mNetzberechnung;
     Logger mLogger;
+    double lowestCost;
 
     QList<QList<bool>> threadfahrplan;
 };

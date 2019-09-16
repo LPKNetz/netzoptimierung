@@ -10,6 +10,7 @@ MainWindow::MainWindow(QWidget *parent) :
     mNetzberechnung = new Netzberechnung();
     mNetzberechnung->setLogger(&mLogger);
     mNetzberechnung->Netz_initialisieren();
+    lowestCost = qInf();
 
     connect(&mLogger, SIGNAL(signalStringOutput(QString)), ui->plainTextEdit_log, SLOT(appendPlainText(QString)));
 }
@@ -113,6 +114,12 @@ void MainWindow::slotResult(QList<bool> kombinationsListe, double Tageskosten)
     }
 
     text += QString().sprintf("  %6.5e", Tageskosten);
+
+    if (Tageskosten < lowestCost)
+    {
+        lowestCost = Tageskosten;
+        ui->label_result->setText(text);
+    }
 
     mLogger.slot_Log("Result", text);
 }
