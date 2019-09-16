@@ -51,6 +51,7 @@ Netzmatrix_Leitungen_invers_berechnen();
  PoPL_ratio_3 = Leistung_total_overflow / (Netzeinspeiseleistung_aktuell() - Netzausspeiseleistung_aktuell()) %
 
 %bei tic einen STOPP-Point machen
+%In KW_Lasten_Speicher-Tabelle muss die 11. Zeile ein Speicher an der Position K4 sein
 %% Optimierer
 
 %INPUT:
@@ -334,7 +335,7 @@ function Lastgang_rechnen()
     
     %       Analyse und Testing:
     
-    
+    Tageskosten
     Bemessungsleistung=zeros(u,1);
     for i=1:u %Counter berechnen und Bemessungsleistung aus Originaltabelle / Liste holen
         Leitung=Leitungsliste(1,i);
@@ -403,7 +404,9 @@ function Netzmatrix_Leitungen_invers_berechnen()
     % Knoten 1 als Referenzpunkt wählen, daher Zeile 1 und Spalte 1 löschen
     Netzmatrix_Leitungen(1,:)=[];
     Netzmatrix_Leitungen(:,1)=[];
+    Netzmatrix_Leitungen
     Netzmatrix_Leitungen_invers = inv(Netzmatrix_Leitungen);
+    Netzmatrix_Leitungen_invers
     
     clear G_Summe
     clear i
@@ -799,10 +802,10 @@ function result = Netz_anregeln() %% 7. Netz anregeln:
 
     %Einstellungen:
     format long
-    a_k = 0.00001;      %Definieren der Schrittweite
-    c = 0.0000001;      %Definieren der Finiten Differenz für die Gradientbildung
+    a_k = 0.01;      %Definieren der Schrittweite
+    c = 0.001;      %Definieren der Finiten Differenz für die Gradientbildung
 
-    for loop=1:20
+    for loop=1:50
 
         %1. pL0 - Start-vektor aus allen pLs der Leitungen machen:
 %        [~,l]=size(Leitungsliste);
@@ -837,8 +840,8 @@ function result = Netz_anregeln() %% 7. Netz anregeln:
             Kraftwerk = Kraftwerksliste(1,i);
             % FEHLER : x0 = Kraftwerk.x_N;  %x0 - Start-stellwert
             for z=1:m
-                Kraftwerk = Kraftwerksliste(1,z);
-                rest_xN(z,1) = Kraftwerk.x_N;
+                KW = Kraftwerksliste(1,z);
+                reset_xN(z,1) = KW.x_N;
             end
             Kraftwerk.x_N = Kraftwerk.x_N + c; %auf x0 - Vektor die finite Differenz c aufaddieren
             Netzunterdeckung_regeln();
@@ -848,8 +851,8 @@ function result = Netz_anregeln() %% 7. Netz anregeln:
             % FEHLER : Kraftwerk.x_N = x0; %setzt x_N auf die ursprünglichen Werte (=Start-stellwert) zurück
             % FEHLER : Netzunterdeckung_regeln();
             for z=1:m
-                Kraftwerk = Kraftwerksliste(1,z);
-                Kraftwerk.x_N = rest_xN(z,1);
+                KW = Kraftwerksliste(1,z);
+                KW.x_N = reset_xN(z,1);
             end
             
             Gradient(i,1)= (sum1-sum0)/c ; % Differenz aus Fehlerquadratsumme vor und nach der Leistungsflussberechnung durch die finite Differenz

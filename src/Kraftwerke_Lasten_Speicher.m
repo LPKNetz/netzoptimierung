@@ -175,7 +175,7 @@ classdef Kraftwerke_Lasten_Speicher < handle
         %hier kann man alle möglichen Störfälle einbauen
         end 
         function result = istSpeicher(obj)
-            if obj.x_Nmin < 0.001 && obj.B_N > 0.001
+            if obj.x_Nmin < -0.001 && obj.B_N > 0.001 % "-" (das Minus) nachträglich hinzugefügt
                 result = true;
             else
                 result = false;
