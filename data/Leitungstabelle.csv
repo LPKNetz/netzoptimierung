@@ -1,6 +1,6 @@
 ﻿Leitung l;Startknoten kL1;Endknoten kL2;Bemessungsleistung PL [kW];aktuelle Leistung pL ;Leitungswiderstand RL;Fixkosten CL [€/Jahr];variable Kosten cL [€/kWh];Erlaubnis Vorgabe Bemessungsleistung oKL;Erlaubnis Vorgabe Bemessungsleistung oPL
 1;1;2;516150 ;1;6,33245608;3268497,206;0,01;0;1
-2;2;3;497900 ;0,5;5,961543424;2968252,471;0,01;0;1
+2;2;3;150000 ;0,5;5,961543424;894231,5136;0,01;0;1
 3;2;4;500000 ;-0,7;5,142956348;2571478,174;0,01;0;1
 4;4;5;500000 ;0,2;5,86003413;2930017,065;0,01;0;1
 5;3;7;500010 ;0,1;5,371219601;2685663,513;0,01;0;1
