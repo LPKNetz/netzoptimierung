@@ -308,12 +308,12 @@ function Lastgang_rechnen()
         end
         
         Tageskosten = Tageskosten + Netzkosten_berechnen();
-        Schrittkosten = Netzkosten_berechnen()
+        Schrittkosten = Netzkosten_berechnen();
         
         Grafik_plotten();
         Logfile_schreiben();
         %clc;
-        Tageskosten;
+        Tageskosten
         
         for f=1:u  % Konstruktion von maxpowerflow 
             Leitung=Leitungsliste(1,f);
@@ -404,9 +404,9 @@ function Netzmatrix_Leitungen_invers_berechnen()
     % Knoten 1 als Referenzpunkt wählen, daher Zeile 1 und Spalte 1 löschen
     Netzmatrix_Leitungen(1,:)=[];
     Netzmatrix_Leitungen(:,1)=[];
-    Netzmatrix_Leitungen
+    Netzmatrix_Leitungen;
     Netzmatrix_Leitungen_invers = inv(Netzmatrix_Leitungen);
-    Netzmatrix_Leitungen_invers
+    Netzmatrix_Leitungen_invers;
     
     clear G_Summe
     clear i
