@@ -39,6 +39,10 @@ global Tageskosten
 global counter
 global Anzahl_overflow
 global Leistung_total_overflow
+global globalcounter
+globalcounter = 0;
+global Kostenmatrix
+Kostenmatrix = zeros(1,14);
 %% Programm
 
 Optimizer_benutzen = 0; % für 1 wird der Optimizer benutzt, für 0 wird nur ein einziger Tag durchgerechnet
@@ -52,7 +56,8 @@ if Optimizer_benutzen == 0
     Anzahl_Leitungen = Anzahl_overflow
     Leistung_total_overflow
     PoPL_ratio = Leistung_total_overflow / Netzeinspeiseleistung_aktuell() %
-    PoPL_ratio_3 = Leistung_total_overflow / (Netzeinspeiseleistung_aktuell() - Netzausspeiseleistung_aktuell()) %  
+    PoPL_ratio_3 = Leistung_total_overflow / (Netzeinspeiseleistung_aktuell() - Netzausspeiseleistung_aktuell()) %
+    writematrix(Kostenmatrix,'../log/Kostenmatrix.xls');
 else
     %% Optimierer
     %In KW_Lasten_Speicher-Tabelle muss die 11. Zeile ein Speicher an der Position K4 sein
@@ -307,8 +312,9 @@ function Lastgang_rechnen()
             break;
         end
         
-        Tageskosten = Tageskosten + Netzkosten_berechnen();
         Schrittkosten = Netzkosten_berechnen();
+        Tageskosten = Tageskosten + Schrittkosten;
+        
         
         Grafik_plotten();
         Logfile_schreiben();
@@ -1327,6 +1333,10 @@ end
 
 %Kosten
 function cost = Netzkosten_berechnen()
+global globalcounter
+global Kostenmatrix
+globalcounter = globalcounter +1;
+Kostenmatrix(globalcounter,1)=globalcounter;
     global Leitungsliste
     [~,n]=size(Leitungsliste);
     ck=0;
@@ -1337,16 +1347,33 @@ function cost = Netzkosten_berechnen()
         cv = cv + Leitung.VariableKosten();
     end
     CL = ck + cv;
+    Kostenmatrix(globalcounter,2) = ck;
+    Kostenmatrix(globalcounter,3) = cv;
+    Kostenmatrix(globalcounter,4) = CL;
     global Kraftwerksliste
     [~,m]=size(Kraftwerksliste);
     ck=0;
     cv=0;
+    cvs=0;
+    cks=0;
     for i=1:m
         Kraftwerk = Kraftwerksliste(1,i);
-        ck = ck + Kraftwerk.Fixkosten();
-        cv = cv + Kraftwerk.VariableKosten();
+        if Kraftwerk.istSpeicher()
+            cks = cks + Kraftwerk.Fixkosten();
+            cvs = cvs + Kraftwerk.VariableKosten();
+        else
+            ck = ck + Kraftwerk.Fixkosten();
+            cv = cv + Kraftwerk.VariableKosten();
+        end
     end
     CN = ck + cv;
+    CNS = cks + cvs;
+    Kostenmatrix(globalcounter,5) = ck;
+    Kostenmatrix(globalcounter,6) = cv;
+    Kostenmatrix(globalcounter,7) = CN;
+    Kostenmatrix(globalcounter,8) = cks;
+    Kostenmatrix(globalcounter,9) = cvs;
+    Kostenmatrix(globalcounter,10) = CNS;
     global Knotenliste
     [~,u]=size(Knotenliste);
     ck=0;
@@ -1357,7 +1384,11 @@ function cost = Netzkosten_berechnen()
         cv = cv + Knoten.VariableKosten();
     end
     CK = ck + cv;
-    cost = CL + CN + CK;
+    Kostenmatrix(globalcounter,11) = ck;
+    Kostenmatrix(globalcounter,12) = cv;
+    Kostenmatrix(globalcounter,13) = CK;
+    cost = CL + CN + CNS + CK;
+    Kostenmatrix(globalcounter,14) = cost;    
 end
 
 % Funktionen für den Netzregler:
