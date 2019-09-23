@@ -40,131 +40,132 @@ global counter
 global Anzahl_overflow
 global Leistung_total_overflow
 %% Programm
+
+Optimizer_benutzen = 0; % für 1 wird der Optimizer benutzt, für 0 wird nur ein einziger Tag durchgerechnet
+
 Netzmatrix_Leitungen_invers_berechnen();
 
-% Folgendes aktivieren um NUR 1 Tag zu rechnen:
 
- Lastgang_rechnen();
- Anzahl_Leitungen = Anzahl_overflow
- Leistung_total_overflow 
- PoPL_ratio = Leistung_total_overflow / Netzeinspeiseleistung_aktuell() %
- PoPL_ratio_3 = Leistung_total_overflow / (Netzeinspeiseleistung_aktuell() - Netzausspeiseleistung_aktuell()) %
-
-%bei tic einen STOPP-Point machen
-%In KW_Lasten_Speicher-Tabelle muss die 11. Zeile ein Speicher an der Position K4 sein
-%% Optimierer
-
-%INPUT:
-
-
-tic
-k=length(Knotenliste);
-n = 1;   % Maximale Anzahl an Speichern im Netz
-f = k;  % Anzahl an Knoten im Netz, s.o. k=length(Knotenliste)
-
-
-start = zeros(1, f);    % Startwert für jede FOR Schleife 
-limit = [f+1,f+1,f+1];    % Endwert für jede FOR Schleife 
-g=f+3;
-Kombinationsmatrix(1,g)=0;
-tmp=0;
-
-
-index = start; 
-ready = false; 
-while ~ready 
-   Knotenliste = Knoten_initialisieren();
-   Leitungsliste = Leitungen_initialisieren();
-   Kraftwerksliste = Kraftwerke_initialisieren();
-   
-   % Speicher an alten Knoten löschen und an aktuellen Knoten verschieben
-   if index(1,1) == 0
-       Kraftwerksliste(1,11).K = 4;
-   else
-   Kraftwerksliste(1,11).K = index(1,1);
-   %Kraftwerksliste(1,12).K = index(1,2);
-   %Kraftwerksliste(1,13).K = index(1,3);
-   end
-   
-   % Aktuelle Kombination in Matrix schreiben
-   tmp = tmp + 1;
-   Kombinationsmatrix(tmp,4:g)=index;
-   
-   % Berechnen
-   Lastgang_rechnen();
-   
-   % Kosten der aktuellen Kombination in Matrix abspeichern
-   Kombinationsmatrix(tmp,1)= Tageskosten;
-   
-   % Leitungsinformationen der aktuellen Kombination in Matrix abspeichern
-   Kombinationsmatrix(tmp,2) = Anzahl_overflow; % Anzahl Leitungen nicht im Arbeitsbereich
-   Kombinationsmatrix(tmp,3) = Leistung_total_overflow; % Summe Bemessungsleistung nicht im Arbeitsbereich
-   
-   f = n; 
-   while 1  % Quelle: https://www.gomatlab.de/variable-zahl-verschachtelter-for-schleifen-t14746.html
-      index(f) = index(f) + 1; 
-      if index(f) < limit(f) 
-         break;   % k-ter Index um 1 erhöht 
-      else 
-         index(f) = start(f); 
-         f = f - 1; 
-         if f == 0  % All iterations are ready 
-            ready = true;  % Stop outer WHILE loop 
-            break;    % Break inner WHILE loop 
-         end
-      end 
-   end 
-end 
-
-fprintf('Wert des Eintrages = Platzierungsort (Knotennummer):\n')
-fprintf('\n')
-fprintf('#overflow Poverflow T.kosten  S1    S2    S3    S4    S5    S6    S7    S8    S9 \n')
-
-Kombinationsmatrix
-
-%Die billigste Kombination aus der Kombinationsmatrix finden:
+if Optimizer_benutzen == 0 
+    % Folgendes aktivieren um NUR 1 Tag zu rechnen:
+    Lastgang_rechnen();
+    Anzahl_Leitungen = Anzahl_overflow
+    Leistung_total_overflow
+    PoPL_ratio = Leistung_total_overflow / Netzeinspeiseleistung_aktuell() %
+    PoPL_ratio_3 = Leistung_total_overflow / (Netzeinspeiseleistung_aktuell() - Netzausspeiseleistung_aktuell()) %  
+else
+    %% Optimierer
+    %In KW_Lasten_Speicher-Tabelle muss die 11. Zeile ein Speicher an der Position K4 sein
+    %INPUT:
+    
+    
+    tic
+    k=length(Knotenliste);
+    n = 1;   % Maximale Anzahl an Speichern im Netz
+    f = k;  % Anzahl an Knoten im Netz, s.o. k=length(Knotenliste)
+    
+    
+    start = zeros(1, f);    % Startwert für jede FOR Schleife
+    limit = [f+1,f+1,f+1];    % Endwert für jede FOR Schleife
+    g=f+3;
+    Kombinationsmatrix(1,g)=0;
+    tmp=0;
+    
+    
+    index = start;
+    ready = false;
+    while ~ready
+        Knotenliste = Knoten_initialisieren();
+        Leitungsliste = Leitungen_initialisieren();
+        Kraftwerksliste = Kraftwerke_initialisieren();
+        
+        % Speicher an alten Knoten löschen und an aktuellen Knoten verschieben
+        if index(1,1) == 0
+            Kraftwerksliste(1,11).K = 4;
+        else
+            Kraftwerksliste(1,11).K = index(1,1);
+            %Kraftwerksliste(1,12).K = index(1,2);
+            %Kraftwerksliste(1,13).K = index(1,3);
+        end
+        
+        % Aktuelle Kombination in Matrix schreiben
+        tmp = tmp + 1;
+        Kombinationsmatrix(tmp,4:g)=index;
+        
+        % Berechnen
+        Lastgang_rechnen();
+        
+        % Kosten der aktuellen Kombination in Matrix abspeichern
+        Kombinationsmatrix(tmp,1)= Tageskosten;
+        
+        % Leitungsinformationen der aktuellen Kombination in Matrix abspeichern
+        Kombinationsmatrix(tmp,2) = Anzahl_overflow; % Anzahl Leitungen nicht im Arbeitsbereich
+        Kombinationsmatrix(tmp,3) = Leistung_total_overflow; % Summe Bemessungsleistung nicht im Arbeitsbereich
+        
+        f = n;
+        while 1  % Quelle: https://www.gomatlab.de/variable-zahl-verschachtelter-for-schleifen-t14746.html
+            index(f) = index(f) + 1;
+            if index(f) < limit(f)
+                break;   % k-ter Index um 1 erhöht
+            else
+                index(f) = start(f);
+                f = f - 1;
+                if f == 0  % All iterations are ready
+                    ready = true;  % Stop outer WHILE loop
+                    break;    % Break inner WHILE loop
+                end
+            end
+        end
+    end
+    
+    fprintf('Wert des Eintrages = Platzierungsort (Knotennummer):\n')
+    fprintf('\n')
+    fprintf('#overflow Poverflow T.kosten  S1    S2    S3    S4    S5    S6    S7    S8    S9 \n')
+    
+    Kombinationsmatrix
+    
+    %Die billigste Kombination aus der Kombinationsmatrix finden:
     [n,m]=size(Kombinationsmatrix);
     p = 10e30;  % p = Extrem große Zahl
-    Kombination = zeros(1,g); 
+    Kombination = zeros(1,g);
     for i=1:n
         if Kombinationsmatrix(i,1) < p
-            p = Kombinationsmatrix(i,1); 
+            p = Kombinationsmatrix(i,1);
             Kombination(1,:)= Kombinationsmatrix(i,:); % billigste Kombination aus Kombinationsmatrix extrahieren
             
         end
     end
-fprintf('Kostengünstigste Speicher-Kombination:\n')
-Kombination
-
-pp=0;
-Standort = zeros(k,2);
-for i=4:m % Anzahl Speicher
-    if Kombination(1,i) > 0
-        pp = pp + 1;
-        Standort(pp,1) = i - 3; % 1. Spalte = Speichernummer
-        Standort(pp,2) = Kombination(1,i); % 2. Spalte = Knotennummer
-    end
-end  
-Anzahl_Speicher = pp
-Anzahl_Leitungen = Kombination(1,2)
-Leistung_total_overflow = Kombination(1,3)
-
-PoPL_ratio = Leistung_total_overflow / Netzeinspeiseleistung_aktuell()
-PoPL_ratio_3 = Leistung_total_overflow / (Netzeinspeiseleistung_aktuell() - Netzausspeiseleistung_aktuell()) %
-
-
-
-SL_ratio = Anzahl_Speicher / Anzahl_Leitungen;
-fprintf('Kostengünstigstes Verhältnis aus Speichern und ausgebauten Leitungen:  %.2f \n' , SL_ratio )
+    fprintf('Kostengünstigste Speicher-Kombination:\n')
+    Kombination
     
-
-
-
+    pp=0;
+    Standort = zeros(k,2);
+    for i=4:m % Anzahl Speicher
+        if Kombination(1,i) > 0
+            pp = pp + 1;
+            Standort(pp,1) = i - 3; % 1. Spalte = Speichernummer
+            Standort(pp,2) = Kombination(1,i); % 2. Spalte = Knotennummer
+        end
+    end
+    Anzahl_Speicher = pp
+    Anzahl_Leitungen = Kombination(1,2)
+    Leistung_total_overflow = Kombination(1,3)
+    
+    PoPL_ratio = Leistung_total_overflow / Netzeinspeiseleistung_aktuell()
+    PoPL_ratio_3 = Leistung_total_overflow / (Netzeinspeiseleistung_aktuell() - Netzausspeiseleistung_aktuell()) %
+    
+    
+    SL_ratio = Anzahl_Speicher / Anzahl_Leitungen;
+    fprintf('Kostengünstigstes Verhältnis aus Speichern und ausgebauten Leitungen:  %.2f \n' , SL_ratio )
+    
+    
     clear i
     clear n
+    
+    
+    toc
+end
 
-
-toc
 %% Animation beenden
 finishAnimation(animationWriter);
 
@@ -172,10 +173,9 @@ finishAnimation(animationWriter);
 if Logfile ~= 1
     fclose(Logfile);
 end
+    
 
-
-
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
