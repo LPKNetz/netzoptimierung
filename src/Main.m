@@ -1,8 +1,7 @@
+%% Workspace leeren und alte Grafikausgaben löschen
 clc, clear, close all 
 feature('DefaultCharacterSet','UTF-8');
 warning('on','all');
-
-%% Alte Grafikausgaben loeschen
 delete('../log/Grafik/*');
 
 %% Logfile anlegen:
@@ -13,12 +12,11 @@ if Logfile == -1
 end
 %fprintf(Logfile, '%s: %s\n', datestr(now, 0), test);
 
-% Folgende Zeile auskommentieren um auf die Konsole zu schreiben statt in
-% das Logfile:
+% Folgende Zeile auskommentieren um auf die Konsole zu schreiben statt in das Logfile:
 
 %Logfile=1; 
         
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Initialisierung
 
 global figureNum;
 figureNum = 0;
@@ -43,6 +41,7 @@ global globalcounter
 globalcounter = 0;
 global Kostenmatrix
 Kostenmatrix = zeros(1,14);
+
 %% Programm
 
 Optimizer_benutzen = 0; % für 1 wird der Optimizer benutzt, für 0 wird nur ein einziger Tag durchgerechnet
@@ -51,7 +50,7 @@ Netzmatrix_Leitungen_invers_berechnen();
 
 
 if Optimizer_benutzen == 0 
-    % Folgendes aktivieren um NUR 1 Tag zu rechnen:
+    % Folgendes berechnet NUR 1 Tag:
     Lastgang_rechnen();
     Anzahl_Leitungen = Anzahl_overflow
     Leistung_total_overflow
@@ -61,16 +60,16 @@ if Optimizer_benutzen == 0
 else
     %% Optimierer
     %In KW_Lasten_Speicher-Tabelle muss die 11. Zeile ein Speicher an der Position K4 sein
-    %INPUT:
     
     
     tic
+    %INPUT:
     k=length(Knotenliste);
     n = 1;   % Maximale Anzahl an Speichern im Netz
-    f = k;  % Anzahl an Knoten im Netz, s.o. k=length(Knotenliste)
+    f = k;   % Anzahl an Knoten im Netz, s.o. k=length(Knotenliste)
     
     
-    start = zeros(1, f);    % Startwert für jede FOR Schleife
+    start = zeros(1, f);      % Startwert für jede FOR Schleife
     limit = [f+1,f+1,f+1];    % Endwert für jede FOR Schleife
     g=f+3;
     Kombinationsmatrix(1,g)=0;
@@ -129,14 +128,14 @@ else
     
     Kombinationsmatrix
     
-    %Die billigste Kombination aus der Kombinationsmatrix finden:
+    %Die günstigste Kombination aus der Kombinationsmatrix finden:
     [n,m]=size(Kombinationsmatrix);
     p = 10e30;  % p = Extrem große Zahl
     Kombination = zeros(1,g);
     for i=1:n
         if Kombinationsmatrix(i,1) < p
             p = Kombinationsmatrix(i,1);
-            Kombination(1,:)= Kombinationsmatrix(i,:); % billigste Kombination aus Kombinationsmatrix extrahieren
+            Kombination(1,:)= Kombinationsmatrix(i,:); % günstigste Kombination aus Kombinationsmatrix extrahieren
             
         end
     end
@@ -157,7 +156,7 @@ else
     Leistung_total_overflow = Kombination(1,3)
     
     PoPL_ratio = Leistung_total_overflow / Netzeinspeiseleistung_aktuell()
-    PoPL_ratio_3 = Leistung_total_overflow / (Netzeinspeiseleistung_aktuell() - Netzausspeiseleistung_aktuell()) %
+    PoPL_ratio_3 = Leistung_total_overflow / (Netzeinspeiseleistung_aktuell() - Netzausspeiseleistung_aktuell()) 
     
     
     SL_ratio = Anzahl_Speicher / Anzahl_Leitungen;
@@ -171,23 +170,18 @@ else
     toc
 end
 
-%% Animation beenden
+%% Animation beenden und Logfile schließen
 finishAnimation(animationWriter);
 
-%% Logfile schließen
+
 if Logfile ~= 1
     fclose(Logfile);
 end
-    
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 
 %% Funktionen:
 
 %Initialisieren:
-function result = Knoten_initialisieren()  %% 1. Knoten-Objekte initialisieren:
+function result = Knoten_initialisieren()  %% Knoten-Objekte initialisieren:
     Knotenmatrix = readmatrix('../data/Knotentabelle.xlsx');
     [m,~] = size(Knotenmatrix); %debug output
     %global Knotenliste
@@ -205,7 +199,7 @@ function result = Knoten_initialisieren()  %% 1. Knoten-Objekte initialisieren:
     clear m
     clear Knotenmatrix
 end
-function result = Leitungen_initialisieren() %% 2. Leitungs-Objekte initialisieren:
+function result = Leitungen_initialisieren() %% Leitungs-Objekte initialisieren:
     Leitungsmatrix = readmatrix('../data/Leitungstabelle.xlsx');
     [m,~] = size(Leitungsmatrix);
 
@@ -229,7 +223,7 @@ function result = Leitungen_initialisieren() %% 2. Leitungs-Objekte initialisier
     clear m
     clear Leitungsmatrix 
 end
-function result = Kraftwerke_initialisieren() %% 3. Kraftwerke_Lasten_Speicher
+function result = Kraftwerke_initialisieren() %% Kraftwerke, Lasten und Speicher initialisieren
     Kraftwerksmatrix = readtable('../data/Kraftwerke_Lasten_Speichertabelle.xlsx');
     [m,~] = size(Kraftwerksmatrix);
     Kraftwerksliste = Kraftwerke_Lasten_Speicher.empty;
@@ -257,8 +251,130 @@ function result = Kraftwerke_initialisieren() %% 3. Kraftwerke_Lasten_Speicher
     clear Kraftwerksmatrix
 end
 
-%Lastgang rechnen (Netzregler)
-function Lastgang_rechnen()
+%Netz berechnen:
+function Leitungsfluss_berechnen() %% Netztabellen einlesen, Netzmatrizen erstellen, aktuellen Leitungsfluss berechnen:
+    % Funktion ohne result! Trägt Ergebnisse direkt in die Leitungsliste ein.
+    % Netzmatrix_Leitungen (=A im Sinne v. Ax=b) erstellen:
+    global Knotenliste;
+    global Leitungsliste;
+    global Kraftwerksliste;
+    global Netzmatrix_Leitungen_invers;
+
+    % Leistungsvektor erstellen:
+    k=length(Knotenliste);
+    n=length(Kraftwerksliste);
+    for i=1:k  
+        P_Summe=0;
+        for j=1:n
+            Kraftwerk = Kraftwerksliste(1,j);
+            if Kraftwerk.Netzverknuepfungspunkt() == i 
+                P_Summe=P_Summe+Kraftwerk.Leistung_aktuell();
+            end
+        end
+        Leistungsvektor(i,1)=P_Summe;
+    end
+    clear i
+    clear k
+    clear j
+    clear n
+    clear P_Summe
+    clear Kraftwerk
+
+    %Potentialvektor erstellen:
+    % Leistungseintrag an Referenzpunkt (Knoten 1) löschen
+    Leistungsvektor(1,:)=[];
+    Potentialvektor = Netzmatrix_Leitungen_invers*Leistungsvektor;
+    % Potentialvektoreintrag an Referenzpunkt (Knoten 1) hinzufügen und auf 0 setzen
+    Potentialvektor = [zeros(1,1); Potentialvektor]; 
+
+    clear Netzmatrix_Leitungen
+    clear Leistungsvektor
+
+    %Lastfluss auf Leitungen berechnen:
+    l=length(Leitungsliste);
+    for i=1:l
+        Leitung=Leitungsliste(1,i);
+        R=Leitung.Leitungswiderstand();
+        s=Leitung.Startknoten();
+        e=Leitung.Endknoten();
+        Startpotential=Potentialvektor(s,1);
+        Endpotential=Potentialvektor(e,1);
+        Potentialdifferenz=Startpotential-Endpotential;
+        p=Potentialdifferenz/R;
+        Leitung.Aktuelle_Leistung_setzen_in_kW(p);
+    %fprintf(Logfile, 'Leistung ueber Leitung %i:  %8.0f kW\n',i,p)
+    end
+    clear M
+    clear b
+    clear z
+    clear s
+    clear e
+    clear R
+    clear p
+    clear Leitung
+    clear l
+    clear c
+    clear Leitungsmatrix
+    clear i
+    clear Startpotential
+    clear Endpotential
+    clear Potentialvektor
+    clear Potentialdifferenz
+end
+function Netzmatrix_Leitungen_invers_berechnen()
+    global Knotenliste;
+    global Leitungsliste;
+    global Netzmatrix_Leitungen_invers;
+    k=length(Knotenliste);
+    l=length(Leitungsliste);
+    for i=1:k   %Netzmatrix_Leitungen erstellen
+        for j=1:k
+            if i == j
+                G_Summe=0;
+                for m=1:l
+                    Leitung=Leitungsliste(1,m);
+                    R=Leitung.Leitungswiderstand();
+                    G=1/R;
+                    if Leitung.Startknoten() == i || Leitung.Endknoten() == i
+                        G_Summe=G_Summe+G;
+                    end
+                end
+                Netzmatrix_Leitungen(i,j)=G_Summe;
+
+            else
+                G_Summe=0;
+                for m=1:l
+                    Leitung=Leitungsliste(1,m);
+                    R=Leitung.Leitungswiderstand();
+                    G=1/R;
+                    if (Leitung.Startknoten() == i && Leitung.Endknoten() == j)||...
+                            (Leitung.Startknoten() == j && Leitung.Endknoten() == i)
+                        G_Summe=G_Summe+G;
+                    end
+                end
+                Netzmatrix_Leitungen(i,j)=-G_Summe;  
+            end
+        end
+    end
+    
+    % Knoten 1 als Referenzpunkt wählen, daher Zeile 1 und Spalte 1 löschen
+    Netzmatrix_Leitungen(1,:)=[];
+    Netzmatrix_Leitungen(:,1)=[];
+    Netzmatrix_Leitungen;
+    Netzmatrix_Leitungen_invers = inv(Netzmatrix_Leitungen);
+    Netzmatrix_Leitungen_invers;
+    
+    clear G_Summe
+    clear i
+    clear j
+    clear k
+    clear l
+    clear m
+    clear R
+    clear G
+    clear Netzmatrix_Leitungen
+end
+function Lastgang_rechnen() %Netzregler
     %global Knotenliste;
     global Leitungsliste;
     %global Kraftwerksliste;
@@ -370,134 +486,53 @@ function Lastgang_rechnen()
     clear time;
     % to do: mehr clear ...
 end
-
-function Netzmatrix_Leitungen_invers_berechnen()
-    global Knotenliste;
-    global Leitungsliste;
-    global Netzmatrix_Leitungen_invers;
-    k=length(Knotenliste);
-    l=length(Leitungsliste);
-    for i=1:k   %Netzmatrix_Leitungen erstellen
-        for j=1:k
-            if i == j
-                G_Summe=0;
-                for m=1:l
-                    Leitung=Leitungsliste(1,m);
-                    R=Leitung.Leitungswiderstand();
-                    G=1/R;
-                    if Leitung.Startknoten() == i || Leitung.Endknoten() == i
-                        G_Summe=G_Summe+G;
-                    end
-                end
-                Netzmatrix_Leitungen(i,j)=G_Summe;
-
-            else
-                G_Summe=0;
-                for m=1:l
-                    Leitung=Leitungsliste(1,m);
-                    R=Leitung.Leitungswiderstand();
-                    G=1/R;
-                    if (Leitung.Startknoten() == i && Leitung.Endknoten() == j)||...
-                            (Leitung.Startknoten() == j && Leitung.Endknoten() == i)
-                        G_Summe=G_Summe+G;
-                    end
-                end
-                Netzmatrix_Leitungen(i,j)=-G_Summe;  
-            end
-        end
-    end
-    
-    % Knoten 1 als Referenzpunkt wählen, daher Zeile 1 und Spalte 1 löschen
-    Netzmatrix_Leitungen(1,:)=[];
-    Netzmatrix_Leitungen(:,1)=[];
-    Netzmatrix_Leitungen;
-    Netzmatrix_Leitungen_invers = inv(Netzmatrix_Leitungen);
-    Netzmatrix_Leitungen_invers;
-    
-    clear G_Summe
-    clear i
-    clear j
-    clear k
-    clear l
-    clear m
-    clear R
-    clear G
-    clear Netzmatrix_Leitungen
-end
-
-%Netz berechnen:
-function Leitungsfluss_berechnen() %% 4. Netztabellen einlesen, Netzmatrizen erstellen, aktuellen Leitungsfluss berechnen:
-    % Funktion ohne result! Trägt Ergebnisse direkt in die Leitungsliste ein.
-    % Netzmatrix_Leitungen (=A im Sinne v. Ax=b) erstellen:
-    global Knotenliste;
-    global Leitungsliste;
+function result = Netzunterdeckung_regeln() %Netzunterdeckung auf 0 regeln:
     global Kraftwerksliste;
-    global Netzmatrix_Leitungen_invers;
+    %Regelreserve nach oben/unten in Abhängigkeit von positiver/negativer NU berechnen:
 
-    % Leistungsvektor erstellen:
-    k=length(Knotenliste);
-    n=length(Kraftwerksliste);
-    for i=1:k  
-        P_Summe=0;
-        for j=1:n
-            Kraftwerk = Kraftwerksliste(1,j);
-            if Kraftwerk.Netzverknuepfungspunkt() == i 
-                P_Summe=P_Summe+Kraftwerk.Leistung_aktuell();
-            end
+    NU = Netzunterdeckung_aktuell(); %berechnet aktuelle Netzunterdeckung
+    [~,m]=size(Kraftwerksliste);
+    Sum_Reserve_KW = 0;
+    if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden, wenn die NU größer 0 ist (=Mangel)
+        for i=1:m
+            Kraftwerk = Kraftwerksliste(1,i);
+            Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_auf_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmax für alle KW
         end
-        Leistungsvektor(i,1)=P_Summe;
+    else  % Kraftwerksverbund muss abgeregelt werden, wenn die NU kleiner 0 ist (=Überschuss)
+        for i=1:m
+            Kraftwerk = Kraftwerksliste(1,i);
+            Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_ab_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmin für alle KW
+        end
     end
-    clear i
-    clear k
-    clear j
-    clear n
-    clear P_Summe
-    clear Kraftwerk
 
-    %Potentialvektor erstellen:
-    % Leistungseintrag an Referenzpunkt (Knoten 1) löschen
-    Leistungsvektor(1,:)=[];
-    Potentialvektor = Netzmatrix_Leitungen_invers*Leistungsvektor;
-    % Potentialvektoreintrag an Referenzpunkt (Knoten 1) hinzufügen und auf 0 setzen
-    Potentialvektor = [zeros(1,1); Potentialvektor]; 
-
-    clear Netzmatrix_Leitungen
-    clear Leistungsvektor
-
-    %Lastfluss auf Leitungen berechnen:
-    l=length(Leitungsliste);
-    for i=1:l
-        Leitung=Leitungsliste(1,i);
-        R=Leitung.Leitungswiderstand();
-        s=Leitung.Startknoten();
-        e=Leitung.Endknoten();
-        Startpotential=Potentialvektor(s,1);
-        Endpotential=Potentialvektor(e,1);
-        Potentialdifferenz=Startpotential-Endpotential;
-        p=Potentialdifferenz/R;
-        Leitung.Aktuelle_Leistung_setzen_in_kW(p);
-    %fprintf(Logfile, 'Leistung ueber Leitung %i:  %8.0f kW\n',i,p)
+    if (Sum_Reserve_KW < 1)
+        fprintf("\nKeine Regelreserve mehr vorhanden!\n");
+        result = false;
+        return
     end
-    clear M
-    clear b
-    clear z
-    clear s
-    clear e
-    clear R
-    clear p
-    clear Leitung
-    clear l
-    clear c
-    clear Leitungsmatrix
-    clear i
-    clear Startpotential
-    clear Endpotential
-    clear Potentialvektor
-    clear Potentialdifferenz
+
+    Anteil_NU = NU/Sum_Reserve_KW; %berechnet das Verhältnis aus Netzunterdeckung und Gesamtreserve
+
+    %AUF - / AB - Regelung der Stellwerte:
+    [~,m]=size(Kraftwerksliste);
+    for i=1:m
+        Kraftwerk = Kraftwerksliste(1,i);
+        if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden
+            RR = Kraftwerk.Regelreserve_auf();
+        else  % Kraftwerksverbund muss abgeregelt werden
+            RR = Kraftwerk.Regelreserve_ab();
+        end
+        Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + RR * Anteil_NU); %Anteil auf Regelreserve aufschalten und um das den Stellwert verändern (für alle KW)
+    end
+    NU = Netzunterdeckung_aktuell();
+    if (abs(NU) > 0.1)
+        result = false;
+    end
+    result = true;
 end
 
-%Logfile schreiben:
-function Logfile_schreiben() %% 5. Logfile schreiben
+%Logfile und Grafik:
+function Logfile_schreiben() 
     global Logfile;
     global Knotenliste;
     global Leitungsliste;
@@ -609,9 +644,7 @@ function Logfile_schreiben() %% 5. Logfile schreiben
     clear time
     clear val
 end
-
-%Grafik plotten:
-function Grafik_plotten() %% 6. Grafik erstellen
+function Grafik_plotten() 
     global Knotenliste;
     global Leitungsliste;
     global Kraftwerksliste;
@@ -741,54 +774,8 @@ function Grafik_plotten() %% 6. Grafik erstellen
     clear y
 end
 
-%Netzunterdeckung auf 0 regeln:
-function result = Netzunterdeckung_regeln()
-    global Kraftwerksliste;
-    %Regelreserve nach oben/unten in Abhängigkeit von positiver/negativer NU berechnen:
-
-    NU = Netzunterdeckung_aktuell(); %berechnet aktuelle Netzunterdeckung
-    [~,m]=size(Kraftwerksliste);
-    Sum_Reserve_KW = 0;
-    if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden, wenn die NU größer 0 ist (=Mangel)
-        for i=1:m
-            Kraftwerk = Kraftwerksliste(1,i);
-            Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_auf_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmax für alle KW
-        end
-    else  % Kraftwerksverbund muss abgeregelt werden, wenn die NU kleiner 0 ist (=Überschuss)
-        for i=1:m
-            Kraftwerk = Kraftwerksliste(1,i);
-            Sum_Reserve_KW = Sum_Reserve_KW + Kraftwerk.Regelreserve_ab_KW(); %summiert die Differenz vom aktuellen x_N bis zum x_Nmin für alle KW
-        end
-    end
-
-    if (Sum_Reserve_KW < 1)
-        fprintf("\nKeine Regelreserve mehr vorhanden!\n");
-        result = false;
-        return
-    end
-
-    Anteil_NU = NU/Sum_Reserve_KW; %berechnet das Verhältnis aus Netzunterdeckung und Gesamtreserve
-
-    %AUF - / AB - Regelung der Stellwerte:
-    [~,m]=size(Kraftwerksliste);
-    for i=1:m
-        Kraftwerk = Kraftwerksliste(1,i);
-        if NU >= 0  % Kraftwerksverbund muss aufgeregelt werden
-            RR = Kraftwerk.Regelreserve_auf();
-        else  % Kraftwerksverbund muss abgeregelt werden
-            RR = Kraftwerk.Regelreserve_ab();
-        end
-        Kraftwerk.Sollwert_setzen(Kraftwerk.x_N + RR * Anteil_NU); %Anteil auf Regelreserve aufschalten und um das den Stellwert verändern (für alle KW)
-    end
-    NU = Netzunterdeckung_aktuell();
-    if (abs(NU) > 0.1)
-        result = false;
-    end
-    result = true;
-end
-
 %Netz anregeln:
-function result = Netz_anregeln() %% 7. Netz anregeln:   
+function result = Netz_anregeln()    
     global Logfile;
     global Knotenliste;
     global Leitungsliste;
@@ -908,6 +895,20 @@ function result = Netz_anregeln() %% 7. Netz anregeln:
     result = true;
 end
 
+%Leitungslastquadratsumme berechnen:
+function result = Leitungslastquadratsumme_berechnen() %sum_p_L berechnen (= Summe der quadrierten bzw. mit 6 potenzierten pL-Werte)
+    global Leitungsliste;
+    [~,l]=size(Leitungsliste);
+    sum=0;
+    for i=1:l 
+        Leitung=Leitungsliste(1,i);
+        sum=sum+(Leitung.p_L^6); 
+        clear Leitung
+    end
+    result = sum;
+    clear sum
+end
+
 %Time Sequencer:
 function Zeit_setzen(time)
     global Kraftwerksliste;
@@ -921,7 +922,6 @@ function Zeit_setzen(time)
     clear i
     clear Kraftwerk
 end
-
 
 %Grafik:
 function plotKraftwerk(x, y, Kraftwerk)
@@ -1046,7 +1046,6 @@ end
 function finishAnimation(writer)
     close(writer);
 end
-
 
 %Kraftwerke / Lasten / Speicher:
 function power = Netzausspeiseleistung_verfuegbar_min()
@@ -1391,16 +1390,3 @@ Kostenmatrix(globalcounter,1)=globalcounter;
     Kostenmatrix(globalcounter,14) = cost;    
 end
 
-% Funktionen für den Netzregler:
-function result = Leitungslastquadratsumme_berechnen() %sum_p_L berechnen (= Summe der quadrierten pL-Werte)
-    global Leitungsliste;
-    [~,l]=size(Leitungsliste);
-    sum=0;
-    for i=1:l 
-        Leitung=Leitungsliste(1,i);
-        sum=sum+(Leitung.p_L^6); 
-        clear Leitung
-    end
-    result = sum;
-    clear sum
-end
